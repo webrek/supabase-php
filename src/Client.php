@@ -6,6 +6,7 @@ namespace Supabase;
 
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
+use Supabase\Functions\FunctionsClient;
 use Supabase\Http\Transport;
 
 final class Client
@@ -40,5 +41,12 @@ final class Client
     public function getTransport(): Transport
     {
         return $this->transport;
+    }
+
+    private ?FunctionsClient $functions = null;
+
+    public function functions(): FunctionsClient
+    {
+        return $this->functions ??= new FunctionsClient($this->transport);
     }
 }

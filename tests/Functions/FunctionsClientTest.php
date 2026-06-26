@@ -1,0 +1,60 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Supabase\Tests\Functions;
+
+use Nyholm\Psr7\Factory\Psr17Factory;
+use Nyholm\Psr7\Response;
+use Supabase\Client;
+use Supabase\ClientOptions;
+use Supabase\Exception\FunctionsException;
+use Supabase\Tests\Support\MockClient;
+
+function functionsClient(MockClient $http): Client
+{
+    $factory = new Psr17Factory();
+
+    return new Client('https://demo.supabase.co', 'ANON', new ClientOptions(
+        httpClient: $http,
+        requestFactory: $factory,
+        streamFactory: $factory,
+    ));
+}
+
+test('invoke posts to the function path with a json body', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], '{"greeting":"hi world"}'));
+
+    $result = functionsClient($http)->functions()->invoke('hello', ['body' => ['name' => 'world']]);
+
+    $request = $http->lastRequest;
+    \assert($request !== null);
+    expect($request->getMethod())->toBe('POST')
+        ->and((string) $request->getUri())->toBe('https://demo.supabase.co/functions/v1/hello')
+        ->and((string) $request->getBody())->toBe('{"name":"world"}')
+        ->and($result)->toBe(['greeting' => 'hi world']);
+});
+
+test('invoke returns the raw body for non-json responses', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'text/plain'], 'pong'));
+
+    $result = functionsClient($http)->functions()->invoke('ping');
+
+    expect($result)->toBe('pong');
+});
+
+test('invoke throws FunctionsException on error status', function () {
+    $http = new MockClient();
+    $http->queue(new Response(500, ['Content-Type' => 'application/json'], '{"message":"boom"}'));
+
+    expect(fn () => functionsClient($http)->functions()->invoke('broken'))
+        ->toThrow(FunctionsException::class, 'boom');
+});
+
+test('functions() is memoised', function () {
+    $client = functionsClient(new MockClient());
+
+    expect($client->functions())->toBe($client->functions());
+});
