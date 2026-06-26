@@ -30,7 +30,10 @@
         "lint": "pint"
     },
     "config": {
-        "allow-plugins": { "pestphp/pest-plugin": true }
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        }
     },
     "minimum-stability": "stable",
     "prefer-stable": true
