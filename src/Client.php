@@ -1,0 +1,44 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Supabase;
+
+use Http\Discovery\Psr17FactoryDiscovery;
+use Http\Discovery\Psr18ClientDiscovery;
+use Supabase\Http\Transport;
+
+final class Client
+{
+    private readonly Transport $transport;
+
+    public function __construct(string $url, string $apiKey, ?ClientOptions $options = null)
+    {
+        $options ??= new ClientOptions();
+
+        $httpClient = $options->httpClient ?? Psr18ClientDiscovery::find();
+        $requestFactory = $options->requestFactory ?? Psr17FactoryDiscovery::findRequestFactory();
+        $streamFactory = $options->streamFactory ?? Psr17FactoryDiscovery::findStreamFactory();
+
+        $headers = [
+            'apikey' => $apiKey,
+            'Authorization' => 'Bearer ' . ($options->accessToken ?? $apiKey),
+        ];
+        foreach ($options->headers as $name => $value) {
+            $headers[$name] = $value;
+        }
+
+        $this->transport = new Transport(
+            $url,
+            $headers,
+            $httpClient,
+            $requestFactory,
+            $streamFactory,
+        );
+    }
+
+    public function getTransport(): Transport
+    {
+        return $this->transport;
+    }
+}
