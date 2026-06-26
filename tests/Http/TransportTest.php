@@ -71,6 +71,15 @@ test('per-request headers override defaults', function () {
     expect($request->getHeaderLine('apikey'))->toBe('OTHER');
 });
 
+test('wraps un-encodable array body in SupabaseException not JsonException', function () {
+    $client = new MockClient();
+    $factory = new Psr17Factory();
+    $transport = new Transport('https://demo.supabase.co', [], $client, $factory, $factory);
+
+    expect(fn () => $transport->request('POST', '/x', ['body' => ['x' => "\xB1\x31"]]))
+        ->toThrow(SupabaseException::class);
+});
+
 test('wraps PSR-18 network errors in SupabaseException', function () {
     $failing = new class () implements ClientInterface {
         public function sendRequest(RequestInterface $request): ResponseInterface

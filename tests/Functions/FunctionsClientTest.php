@@ -58,3 +58,20 @@ test('functions() is memoised', function () {
 
     expect($client->functions())->toBe($client->functions());
 });
+
+test('invoke returns null for an empty application/json body', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], ''));
+
+    $result = functionsClient($http)->functions()->invoke('noop');
+
+    expect($result)->toBeNull();
+});
+
+test('invoke throws FunctionsException for malformed json body', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], '{not json'));
+
+    expect(fn () => functionsClient($http)->functions()->invoke('broken-body'))
+        ->toThrow(FunctionsException::class);
+});

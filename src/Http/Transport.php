@@ -46,7 +46,11 @@ final class Transport
             $body = $options['body'];
             if (is_array($body)) {
                 $headers['Content-Type'] ??= 'application/json';
-                $body = json_encode($body, JSON_THROW_ON_ERROR);
+                try {
+                    $body = json_encode($body, JSON_THROW_ON_ERROR);
+                } catch (\JsonException $e) {
+                    throw new SupabaseException('Failed to encode request body as JSON: ' . $e->getMessage(), previous: $e);
+                }
             }
             $request = $request->withBody($this->streamFactory->createStream($body));
         }

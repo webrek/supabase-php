@@ -37,7 +37,21 @@ final class FunctionsClient
 
         $body = (string) $response->getBody();
         if (str_contains($response->getHeaderLine('Content-Type'), 'application/json')) {
-            return json_decode($body, true, flags: JSON_THROW_ON_ERROR);
+            if ($body === '') {
+                return null;
+            }
+
+            try {
+                return json_decode($body, true, flags: JSON_THROW_ON_ERROR);
+            } catch (\JsonException $e) {
+                throw new FunctionsException(
+                    'Invalid JSON in response body: ' . $e->getMessage(),
+                    $response->getStatusCode(),
+                    null,
+                    $body,
+                    $e,
+                );
+            }
         }
 
         return $body;

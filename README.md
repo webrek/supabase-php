@@ -1,7 +1,12 @@
 # supabase-php
 
-Framework-agnostic PHP client for [Supabase](https://supabase.com): database,
-auth, storage, and edge functions. PHP 8.3+.
+Framework-agnostic PHP client for [Supabase](https://supabase.com). PHP 8.3+.
+
+## Status
+
+**Only Edge Functions is available in the current release.**
+Database (PostgREST), Auth, and Storage are planned and will be added in future
+milestones.
 
 ## Installation
 
@@ -64,10 +69,11 @@ try {
 }
 ```
 
-## Sessions
+## Sessions (design principle)
 
-This SDK is stateless: it never stores or refreshes sessions. Auth methods return
-`Session`/`User` objects; persisting them is the caller's responsibility.
+This SDK is stateless: it will never store or refresh sessions internally.
+When Auth lands, it will return `Session`/`User` objects; persisting them will be
+the caller's responsibility.
 
 ## License
 
