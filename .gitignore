@@ -5,3 +5,7 @@ composer.lock
 /.idea/
 /.vscode/
 .DS_Store
+
+# Local design/planning docs — not part of the published package
+/docs/superpowers/
+/.superpowers/
