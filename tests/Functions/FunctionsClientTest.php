@@ -107,3 +107,39 @@ test('invoke throws InvalidArgumentException for a whitespace-only function name
 
     expect($http->lastRequest)->toBeNull();
 });
+
+test('invoke throws FunctionsException on a 3xx redirect response', function () {
+    $http = new MockClient();
+    $http->queue(new Response(302, ['Location' => 'https://evil.example/'], 'ignored body'));
+
+    expect(fn () => functionsClient($http)->functions()->invoke('redir'))
+        ->toThrow(FunctionsException::class);
+});
+
+test('invoke decodes a case-insensitive Application/JSON content type', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'Application/JSON'], '{"a":1}'));
+
+    expect(functionsClient($http)->functions()->invoke('ci'))->toBe(['a' => 1]);
+});
+
+test('invoke decodes application/json with charset parameter', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'application/json; charset=utf-8'], '{"a":1}'));
+
+    expect(functionsClient($http)->functions()->invoke('charset'))->toBe(['a' => 1]);
+});
+
+test('invoke decodes a +json suffixed media type', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'application/vnd.api+json'], '{"a":1}'));
+
+    expect(functionsClient($http)->functions()->invoke('vnd'))->toBe(['a' => 1]);
+});
+
+test('invoke returns raw string when first media type is not json', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'text/html, application/json'], '<p>hi</p>'));
+
+    expect(functionsClient($http)->functions()->invoke('html'))->toBe('<p>hi</p>');
+});

@@ -13,19 +13,25 @@ final class Client
 {
     private readonly Transport $transport;
 
-    public function __construct(string $url, string $apiKey, ?ClientOptions $options = null)
+    public function __construct(string $url, #[\SensitiveParameter] string $apiKey, ?ClientOptions $options = null)
     {
         $parsed = parse_url($url);
         $scheme = isset($parsed['scheme']) ? strtolower($parsed['scheme']) : '';
         $host = $parsed['host'] ?? '';
 
-        if ($scheme === 'https') {
+        if (isset($parsed['user']) || isset($parsed['pass'])) {
+            throw new \InvalidArgumentException(
+                "The Supabase URL must not contain userinfo (user:password): \"{$url}\"."
+            );
+        }
+
+        if ($scheme === 'https' && $host !== '') {
             // always allowed
         } elseif ($scheme === 'http' && ($host === 'localhost' || $host === '127.0.0.1')) {
             // local dev exception
         } else {
             throw new \InvalidArgumentException(
-                "The Supabase URL must use HTTPS (got: \"{$url}\"). "
+                "The Supabase URL must use HTTPS with a host (got: \"{$url}\"). "
                 . 'HTTP is only permitted for localhost / 127.0.0.1.'
             );
         }
@@ -56,6 +62,16 @@ final class Client
     public function getTransport(): Transport
     {
         return $this->transport;
+    }
+
+    /**
+     * Prevents accidental persistence of credentials to cache/session.
+     *
+     * @return array<string, mixed>
+     */
+    public function __serialize(): array
+    {
+        throw new \LogicException('Client must not be serialized; it holds credentials.');
     }
 
     private ?FunctionsClient $functions = null;

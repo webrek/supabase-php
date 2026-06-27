@@ -113,3 +113,57 @@ test('__debugInfo redacts apikey and Authorization headers', function () {
         ->and($output)->toContain('***redacted***')
         ->and($output)->toContain('visible');
 });
+
+test('__debugInfo redacts a custom X-Api-Key header', function () {
+    $factory = new Psr17Factory();
+    $secret = 'x-api-key-secret-value';
+    $transport = new Transport(
+        'https://demo.supabase.co',
+        ['X-Api-Key' => $secret, 'X-Custom' => 'visible'],
+        new MockClient(),
+        $factory,
+        $factory,
+    );
+
+    ob_start();
+    var_dump($transport);
+    $output = (string) ob_get_clean();
+
+    expect($output)->not->toContain($secret)
+        ->and($output)->toContain('***redacted***')
+        ->and($output)->toContain('visible');
+});
+
+test('request rejects an HTTP method containing CRLF injection', function () {
+    $transport = makeTransport(new MockClient());
+
+    expect(fn () => $transport->request("POST\r\nX-Injected: 1", '/x'))
+        ->toThrow(\InvalidArgumentException::class);
+});
+
+test('request rejects an unknown HTTP method', function () {
+    $transport = makeTransport(new MockClient());
+
+    expect(fn () => $transport->request('CONNECT', '/x'))
+        ->toThrow(\InvalidArgumentException::class);
+});
+
+test('request accepts a lowercase method case-insensitively', function () {
+    $client = new MockClient();
+    $client->queue(new Response(200, [], '{}'));
+
+    $transport = makeTransport($client);
+    $transport->request('post', '/x');
+
+    $request = $client->lastRequest;
+    assert($request instanceof RequestInterface);
+
+    expect($request->getMethod())->toBe('POST');
+});
+
+test('Transport must not be serialized', function () {
+    $transport = makeTransport(new MockClient());
+
+    expect(fn () => serialize($transport))
+        ->toThrow(\LogicException::class);
+});

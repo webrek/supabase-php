@@ -108,3 +108,58 @@ test('throws InvalidArgumentException when url has no scheme', function () {
         streamFactory: $factory,
     )))->toThrow(\InvalidArgumentException::class);
 });
+
+test('throws InvalidArgumentException when https url has no host', function () {
+    expect(fn () => new Client('https:evil.example', 'k'))
+        ->toThrow(\InvalidArgumentException::class);
+});
+
+test('throws InvalidArgumentException when url contains userinfo', function () {
+    expect(fn () => new Client('https://u:p@host', 'k'))
+        ->toThrow(\InvalidArgumentException::class);
+});
+
+test('the api key is redacted from exception stack traces', function () {
+    $caught = null;
+    try {
+        new Client('http://evil.example', 'SECRETKEY123');
+    } catch (\Throwable $e) {
+        $caught = $e;
+    }
+
+    expect($caught)->not->toBeNull();
+    assert($caught instanceof \Throwable);
+    expect($caught->getTraceAsString())->not->toContain('SECRETKEY123');
+});
+
+test('Client must not be serialized', function () {
+    $factory = new Psr17Factory();
+    $sb = new Client('https://demo.supabase.co', 'ANON', new ClientOptions(
+        httpClient: new MockClient(),
+        requestFactory: $factory,
+        streamFactory: $factory,
+    ));
+
+    expect(fn () => serialize($sb))->toThrow(\LogicException::class);
+});
+
+test('ClientOptions __debugInfo redacts the access token and sensitive headers', function () {
+    $options = new ClientOptions(
+        headers: ['X-Api-Key' => 'HEADERSECRET', 'X-Visible' => 'shown'],
+        accessToken: 'JWT123',
+    );
+
+    ob_start();
+    var_dump($options);
+    $output = (string) ob_get_clean();
+
+    expect($output)->not->toContain('JWT123')
+        ->and($output)->not->toContain('HEADERSECRET')
+        ->and($output)->toContain('***redacted***')
+        ->and($output)->toContain('shown');
+});
+
+test('ClientOptions must not be serialized', function () {
+    expect(fn () => serialize(new ClientOptions(accessToken: 'x')))
+        ->toThrow(\LogicException::class);
+});

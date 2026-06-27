@@ -6,6 +6,7 @@ namespace Supabase\Exception;
 
 use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
+use Supabase\Http\ResponseBody;
 use Throwable;
 
 class SupabaseException extends RuntimeException
@@ -49,15 +50,20 @@ class SupabaseException extends RuntimeException
     public static function fromResponse(ResponseInterface $response): static
     {
         $status = $response->getStatusCode();
-        $body = (string) $response->getBody();
+        $body = ResponseBody::read($response->getBody());
 
         $message = $response->getReasonPhrase() !== ''
             ? $response->getReasonPhrase()
             : 'HTTP error ' . $status;
         $code = null;
 
-        /** @var mixed $decoded */
-        $decoded = json_decode($body, true);
+        $decoded = null;
+        try {
+            /** @var mixed $decoded */
+            $decoded = json_decode($body, true, flags: JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            $decoded = null;
+        }
         if (is_array($decoded)) {
             foreach (['message', 'msg', 'error_description', 'error'] as $key) {
                 if (isset($decoded[$key]) && is_string($decoded[$key])) {
@@ -66,7 +72,7 @@ class SupabaseException extends RuntimeException
                 }
             }
             foreach (['code', 'error_code'] as $key) {
-                if (isset($decoded[$key]) && (is_string($decoded[$key]) || is_int($decoded[$key]))) {
+                if (isset($decoded[$key]) && (is_string($decoded[$key]) || is_int($decoded[$key]) || is_float($decoded[$key]))) {
                     $code = (string) $decoded[$key];
                     break;
                 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Supabase\Functions;
 
 use Supabase\Exception\FunctionsException;
+use Supabase\Http\ResponseBody;
 use Supabase\Http\Transport;
 
 final class FunctionsClient
@@ -35,12 +36,20 @@ final class FunctionsClient
             $requestOptions,
         );
 
-        if ($response->getStatusCode() >= 400) {
+        $status = $response->getStatusCode();
+        if ($status >= 400) {
             throw FunctionsException::fromResponse($response);
         }
+        if ($status >= 300) {
+            throw new FunctionsException(
+                "Unexpected redirect response (HTTP {$status}); configure your PSR-18 client to not follow redirects.",
+                $status,
+            );
+        }
 
-        $body = (string) $response->getBody();
-        if (str_contains($response->getHeaderLine('Content-Type'), 'application/json')) {
+        $body = ResponseBody::read($response->getBody());
+        $ct = strtolower(trim(explode(';', explode(',', $response->getHeaderLine('Content-Type'))[0])[0]));
+        if ($ct === 'application/json' || str_ends_with($ct, '+json')) {
             if ($body === '') {
                 return null;
             }

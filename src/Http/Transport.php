@@ -33,20 +33,20 @@ final class Transport
      */
     public function __debugInfo(): array
     {
-        $safeHeaders = [];
-        foreach ($this->defaultHeaders as $name => $value) {
-            $lower = strtolower($name);
-            if ($lower === 'apikey' || $lower === 'authorization') {
-                $safeHeaders[$name] = '***redacted***';
-            } else {
-                $safeHeaders[$name] = $value;
-            }
-        }
-
         return [
             'baseUrl' => $this->baseUrl,
-            'defaultHeaders' => $safeHeaders,
+            'defaultHeaders' => HeaderRedaction::redact($this->defaultHeaders),
         ];
+    }
+
+    /**
+     * Prevents accidental persistence of credentials to cache/session.
+     *
+     * @return array<string, mixed>
+     */
+    public function __serialize(): array
+    {
+        throw new \LogicException('Transport must not be serialized; it holds credentials.');
     }
 
     /**
@@ -54,6 +54,11 @@ final class Transport
      */
     public function request(string $method, string $path, array $options = []): ResponseInterface
     {
+        $method = strtoupper($method);
+        if (! in_array($method, ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'], true)) {
+            throw new \InvalidArgumentException("Invalid HTTP method: {$method}");
+        }
+
         $url = rtrim($this->baseUrl, '/') . $path;
         if (isset($options['query']) && $options['query'] !== []) {
             $url .= '?' . http_build_query($options['query']);

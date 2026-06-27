@@ -44,3 +44,21 @@ test('fromResponse on a subclass returns that subclass', function () {
 
     expect($e)->toBeInstanceOf(FunctionsException::class);
 });
+
+test('fromResponse accepts a float error code', function () {
+    $response = new Response(400, [], '{"message":"x","code":403.0}');
+
+    $e = SupabaseException::fromResponse($response);
+
+    expect($e->getErrorCode())->toBe('403')
+        ->and($e->getMessage())->toBe('x');
+});
+
+test('fromResponse does not throw on a malformed JSON body', function () {
+    $response = new Response(503, [], 'Service Unavailable');
+
+    $e = SupabaseException::fromResponse($response);
+
+    expect($e->getMessage())->toBe('Service Unavailable')
+        ->and($e->getStatusCode())->toBe(503);
+});
