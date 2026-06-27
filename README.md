@@ -11,7 +11,7 @@ milestones.
 ## Installation
 
 ```bash
-composer require victorhdz/supabase-php
+composer require webrek/supabase-php
 ```
 
 You also need any PSR-18 HTTP client and PSR-17 factories. If you do not already

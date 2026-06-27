@@ -1,5 +1,5 @@
 {
-    "name": "victorhdz/supabase-php",
+    "name": "webrek/supabase-php",
     "description": "Framework-agnostic PHP client for Supabase (database, auth, storage, edge functions).",
     "type": "library",
     "license": "MIT",
