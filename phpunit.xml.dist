@@ -5,7 +5,7 @@
          colors="true"
          cacheDirectory=".phpunit.cache"
          failOnWarning="true"
-         failOnRisk="true">
+         failOnRisky="true">
     <testsuites>
         <testsuite name="supabase-php">
             <directory>tests</directory>
