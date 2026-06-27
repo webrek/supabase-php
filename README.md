@@ -80,19 +80,34 @@ the caller's responsibility.
 - **HTTPS enforced.** The SDK rejects any `$url` that does not use `https`, except
   for `http://localhost` and `http://127.0.0.1` (local Supabase dev). This prevents
   your API key and tokens from being sent in cleartext.
-- **Harden your HTTP client in production.** Auto-discovery picks up whatever PSR-18
-  client is installed. For production workloads inject an explicit, hardened client
-  (certificate pinning, strict timeouts) via `ClientOptions`:
+- **Disable HTTP redirects on your PSR-18 client.** The SDK sends your `apikey` in
+  a custom header that is not stripped on cross-origin redirects. The SDK rejects
+  3xx responses, but a client that follows redirects internally can leak the key
+  before the SDK sees the response. Set `allow_redirects: false` (Guzzle) or the
+  equivalent for your client.
+- **Set a request timeout.** The SDK does not impose one; without it a stalled
+  endpoint can hang the process indefinitely.
+- **Do not dump or serialize credential-holding objects.** `Client`, `Transport`,
+  and `ClientOptions` hold your API key. `var_export()` and some crash reporters
+  can expose raw values even though `serialize()` is blocked and `var_dump()` is
+  redacted.
+- **Exception bodies may contain sensitive data.** `SupabaseException::getResponseBody()`
+  returns the raw response body, which may include tokens or PII. Do not log or
+  expose it verbatim.
+- **Inject a hardened client in production.** Auto-discovery picks up whatever PSR-18
+  client is installed. For production, pass an explicit client with redirects off,
+  timeout set, and TLS verification on via `ClientOptions`:
 
   ```php
-  new Client($url, $key, new ClientOptions(httpClient: $myHardenedClient, ...));
+  $httpClient = new \GuzzleHttp\Client([
+      'allow_redirects' => false,
+      'timeout'         => 10,
+      'verify'          => true,
+  ]);
+  new Client($url, $key, new ClientOptions(httpClient: $httpClient));
   ```
 
-- **Exception bodies may contain sensitive data.** `SupabaseException::getResponseBody()`
-  returns the raw response body, which may include tokens or PII in future Auth/Storage
-  responses. Do not log or expose it verbatim.
-
-For reporting a vulnerability, see [SECURITY.md](SECURITY.md).
+For full guidance and vulnerability reporting, see [SECURITY.md](SECURITY.md).
 
 ## License
 
