@@ -30,6 +30,14 @@ class SupabaseException extends RuntimeException
         return $this->errorCode;
     }
 
+    /**
+     * Returns the raw HTTP response body captured when this exception was created.
+     *
+     * WARNING: The body may contain sensitive data (e.g. tokens, credentials, or
+     * personally identifiable information returned by Auth or Storage responses).
+     * Do NOT log or expose this value verbatim in error tracking systems or
+     * server-side logs without first scrubbing its contents.
+     */
     public function getResponseBody(): ?string
     {
         return $this->responseBody;

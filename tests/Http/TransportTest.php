@@ -93,3 +93,23 @@ test('wraps PSR-18 network errors in SupabaseException', function () {
     expect(fn () => $transport->request('GET', '/x'))
         ->toThrow(SupabaseException::class, 'offline');
 });
+
+test('__debugInfo redacts apikey and Authorization headers', function () {
+    $factory = new Psr17Factory();
+    $secret = 'super-secret-api-key';
+    $transport = new Transport(
+        'https://demo.supabase.co',
+        ['apikey' => $secret, 'Authorization' => 'Bearer ' . $secret, 'X-Custom' => 'visible'],
+        new MockClient(),
+        $factory,
+        $factory,
+    );
+
+    ob_start();
+    var_dump($transport);
+    $output = (string) ob_get_clean();
+
+    expect($output)->not->toContain($secret)
+        ->and($output)->toContain('***redacted***')
+        ->and($output)->toContain('visible');
+});

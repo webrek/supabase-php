@@ -18,6 +18,10 @@ final class FunctionsClient
      */
     public function invoke(string $name, array $options = []): mixed
     {
+        if (trim($name) === '') {
+            throw new \InvalidArgumentException('Function name must not be empty or whitespace-only.');
+        }
+
         $requestOptions = [
             'headers' => $options['headers'] ?? [],
         ];
@@ -27,7 +31,7 @@ final class FunctionsClient
 
         $response = $this->transport->request(
             $options['method'] ?? 'POST',
-            '/functions/v1/' . $name,
+            '/functions/v1/' . rawurlencode($name),
             $requestOptions,
         );
 

@@ -6,6 +6,11 @@ composer.lock
 /.vscode/
 .DS_Store
 
+# Environment / secrets
+.env
+.env.*
+*.local
+
 # Local design/planning docs — not part of the published package
 /docs/superpowers/
 /.superpowers/

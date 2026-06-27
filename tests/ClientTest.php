@@ -64,3 +64,47 @@ test('getTransport returns a Transport instance', function () {
 
     expect($sb->getTransport())->toBeInstanceOf(Transport::class);
 });
+
+test('throws InvalidArgumentException for non-https url on public host', function () {
+    $factory = new Psr17Factory();
+
+    expect(fn () => new Client('http://example.com', 'k', new ClientOptions(
+        httpClient: new MockClient(),
+        requestFactory: $factory,
+        streamFactory: $factory,
+    )))->toThrow(\InvalidArgumentException::class);
+});
+
+test('allows http for localhost', function () {
+    $factory = new Psr17Factory();
+
+    $sb = new Client('http://localhost:54321', 'k', new ClientOptions(
+        httpClient: new MockClient(),
+        requestFactory: $factory,
+        streamFactory: $factory,
+    ));
+
+    expect($sb->getTransport())->toBeInstanceOf(Transport::class);
+});
+
+test('allows http for 127.0.0.1', function () {
+    $factory = new Psr17Factory();
+
+    $sb = new Client('http://127.0.0.1:54321', 'k', new ClientOptions(
+        httpClient: new MockClient(),
+        requestFactory: $factory,
+        streamFactory: $factory,
+    ));
+
+    expect($sb->getTransport())->toBeInstanceOf(Transport::class);
+});
+
+test('throws InvalidArgumentException when url has no scheme', function () {
+    $factory = new Psr17Factory();
+
+    expect(fn () => new Client('example.com', 'k', new ClientOptions(
+        httpClient: new MockClient(),
+        requestFactory: $factory,
+        streamFactory: $factory,
+    )))->toThrow(\InvalidArgumentException::class);
+});

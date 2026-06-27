@@ -15,6 +15,21 @@ final class Client
 
     public function __construct(string $url, string $apiKey, ?ClientOptions $options = null)
     {
+        $parsed = parse_url($url);
+        $scheme = isset($parsed['scheme']) ? strtolower($parsed['scheme']) : '';
+        $host = $parsed['host'] ?? '';
+
+        if ($scheme === 'https') {
+            // always allowed
+        } elseif ($scheme === 'http' && ($host === 'localhost' || $host === '127.0.0.1')) {
+            // local dev exception
+        } else {
+            throw new \InvalidArgumentException(
+                "The Supabase URL must use HTTPS (got: \"{$url}\"). "
+                . 'HTTP is only permitted for localhost / 127.0.0.1.'
+            );
+        }
+
         $options ??= new ClientOptions();
 
         $httpClient = $options->httpClient ?? Psr18ClientDiscovery::find();

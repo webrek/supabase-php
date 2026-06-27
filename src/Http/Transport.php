@@ -26,6 +26,30 @@ final class Transport
     }
 
     /**
+     * Returns debug information with sensitive header values redacted so that
+     * var_dump() / print_r() / crash reporters cannot expose live credentials.
+     *
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array
+    {
+        $safeHeaders = [];
+        foreach ($this->defaultHeaders as $name => $value) {
+            $lower = strtolower($name);
+            if ($lower === 'apikey' || $lower === 'authorization') {
+                $safeHeaders[$name] = '***redacted***';
+            } else {
+                $safeHeaders[$name] = $value;
+            }
+        }
+
+        return [
+            'baseUrl' => $this->baseUrl,
+            'defaultHeaders' => $safeHeaders,
+        ];
+    }
+
+    /**
      * @param array{headers?: array<string,string>, query?: array<string,scalar>, body?: array<mixed>|string} $options
      */
     public function request(string $method, string $path, array $options = []): ResponseInterface

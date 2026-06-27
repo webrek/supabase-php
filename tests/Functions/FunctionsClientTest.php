@@ -75,3 +75,35 @@ test('invoke throws FunctionsException for malformed json body', function () {
     expect(fn () => functionsClient($http)->functions()->invoke('broken-body'))
         ->toThrow(FunctionsException::class);
 });
+
+test('invoke percent-encodes traversal segments in the function name', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], '{}'));
+
+    functionsClient($http)->functions()->invoke('../auth/v1/admin');
+
+    $request = $http->lastRequest;
+    \assert($request !== null);
+    $uri = (string) $request->getUri();
+
+    expect($uri)->toContain('functions/v1/..%2Fauth%2Fv1%2Fadmin')
+        ->and($uri)->not->toContain('functions/v1/../auth');
+});
+
+test('invoke throws InvalidArgumentException for an empty function name', function () {
+    $http = new MockClient();
+
+    expect(fn () => functionsClient($http)->functions()->invoke(''))
+        ->toThrow(\InvalidArgumentException::class);
+
+    expect($http->lastRequest)->toBeNull();
+});
+
+test('invoke throws InvalidArgumentException for a whitespace-only function name', function () {
+    $http = new MockClient();
+
+    expect(fn () => functionsClient($http)->functions()->invoke('   '))
+        ->toThrow(\InvalidArgumentException::class);
+
+    expect($http->lastRequest)->toBeNull();
+});

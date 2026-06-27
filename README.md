@@ -75,6 +75,25 @@ This SDK is stateless: it will never store or refresh sessions internally.
 When Auth lands, it will return `Session`/`User` objects; persisting them will be
 the caller's responsibility.
 
+## Security
+
+- **HTTPS enforced.** The SDK rejects any `$url` that does not use `https`, except
+  for `http://localhost` and `http://127.0.0.1` (local Supabase dev). This prevents
+  your API key and tokens from being sent in cleartext.
+- **Harden your HTTP client in production.** Auto-discovery picks up whatever PSR-18
+  client is installed. For production workloads inject an explicit, hardened client
+  (certificate pinning, strict timeouts) via `ClientOptions`:
+
+  ```php
+  new Client($url, $key, new ClientOptions(httpClient: $myHardenedClient, ...));
+  ```
+
+- **Exception bodies may contain sensitive data.** `SupabaseException::getResponseBody()`
+  returns the raw response body, which may include tokens or PII in future Auth/Storage
+  responses. Do not log or expose it verbatim.
+
+For reporting a vulnerability, see [SECURITY.md](SECURITY.md).
+
 ## License
 
 MIT
