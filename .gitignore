@@ -10,6 +10,7 @@ composer.lock
 .env
 .env.*
 *.local
+/auth.json
 
 # Local design/planning docs — not part of the published package
 /docs/superpowers/
