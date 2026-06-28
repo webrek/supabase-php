@@ -224,6 +224,37 @@ class FilterBuilder
         return $this;
     }
 
+    public function order(string $column, bool $ascending = true, bool $nullsFirst = false): static
+    {
+        $this->addParam('order', $column . '.' . ($ascending ? 'asc' : 'desc') . '.' . ($nullsFirst ? 'nullsfirst' : 'nullslast'));
+        return $this;
+    }
+
+    public function limit(int $count): static
+    {
+        $this->addParam('limit', (string) $count);
+        return $this;
+    }
+
+    public function range(int $from, int $to): static
+    {
+        $this->addParam('offset', (string) $from);
+        $this->addParam('limit', (string) ($to - $from + 1));
+        return $this;
+    }
+
+    public function single(): static
+    {
+        $this->headers['Accept'] = 'application/vnd.pgrst.object+json';
+        return $this;
+    }
+
+    public function maybeSingle(): static
+    {
+        $this->markMaybeSingle();
+        return $this;
+    }
+
     private function stringify(mixed $value): string
     {
         if (is_bool($value)) {
