@@ -12,6 +12,7 @@ use Supabase\Http\Transport;
 use Supabase\Postgrest\FilterBuilder;
 use Supabase\Postgrest\PostgrestClient;
 use Supabase\Postgrest\QueryBuilder;
+use Supabase\Storage\StorageClient;
 
 final class Client
 {
@@ -107,6 +108,13 @@ final class Client
     public function __unserialize(array $data): void
     {
         throw new \LogicException('Client must not be unserialized; it holds credentials.');
+    }
+
+    private ?StorageClient $storage = null;
+
+    public function storage(): StorageClient
+    {
+        return $this->storage ??= new StorageClient($this->transport, $this->url);
     }
 
     private ?FunctionsClient $functions = null;
