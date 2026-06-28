@@ -52,9 +52,10 @@ $httpClient = new \GuzzleHttp\Client(['timeout' => 10, 'connect_timeout' => 5]);
 
 ### Do not dump or serialize credential-holding objects
 
-Do not pass a configured `Client`, `Transport`, or `ClientOptions` instance to
-`var_dump()`, `var_export()`, `serialize()`, `print_r()`, or reflection-based
-crash reporters. These objects hold your API key and any custom headers.
+Do not pass a configured `Client`, `Transport`, `ClientOptions`, or
+`RealtimeClient` instance to `var_dump()`, `var_export()`, `serialize()`,
+`print_r()`, or reflection-based crash reporters. These objects hold your API key
+and any custom headers.
 `serialize()` is blocked (throws `\LogicException`), and `var_dump()`/`print_r()`
 redact sensitive fields, but `var_export()` and some crash-reporting libraries
 can still expose raw values.

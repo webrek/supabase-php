@@ -1,5 +1,11 @@
 # supabase-php
 
+[![Packagist Version](https://img.shields.io/packagist/v/webrek/supabase-php)](https://packagist.org/packages/webrek/supabase-php)
+[![PHP Version](https://img.shields.io/packagist/dependency-v/webrek/supabase-php/php)](https://packagist.org/packages/webrek/supabase-php)
+[![CI](https://github.com/webrek/supabase-php/actions/workflows/ci.yml/badge.svg)](https://github.com/webrek/supabase-php/actions/workflows/ci.yml)
+[![Downloads](https://img.shields.io/packagist/dt/webrek/supabase-php)](https://packagist.org/packages/webrek/supabase-php)
+[![License](https://img.shields.io/packagist/l/webrek/supabase-php)](LICENSE)
+
 Framework-agnostic PHP client for [Supabase](https://supabase.com). PHP 8.3+.
 
 ## Status

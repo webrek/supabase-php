@@ -1,9 +1,9 @@
 {
     "name": "webrek/supabase-php",
-    "description": "Framework-agnostic PHP client for Supabase (database, auth, storage, edge functions).",
+    "description": "Framework-agnostic PHP client for Supabase (database, auth, storage, edge functions, realtime).",
     "type": "library",
     "license": "MIT",
-    "keywords": ["supabase", "postgrest", "gotrue", "storage", "sdk"],
+    "keywords": ["supabase", "postgrest", "gotrue", "storage", "realtime", "websocket", "sdk"],
     "require": {
         "php": "^8.3",
         "psr/http-client": "^1.0",
