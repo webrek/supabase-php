@@ -174,3 +174,37 @@ test('Transport must not be unserialized', function () {
     expect(fn () => $transport->__unserialize([]))
         ->toThrow(\LogicException::class);
 });
+
+test('query accepts ordered pairs with duplicate keys and rawurlencoding', function () {
+    $client = new MockClient();
+    $client->queue(new Response(200, [], '{}'));
+    $transport = makeTransport($client);
+
+    $transport->request('GET', '/rest/v1/users', ['query' => [
+        ['select', 'id,name'],
+        ['age', 'gte.18'],
+        ['age', 'lte.65'],
+        ['or', '(name.eq.John Doe,name.eq.Jane)'],
+    ]]);
+
+    $request = $client->lastRequest;
+    assert($request instanceof RequestInterface);
+
+    expect((string) $request->getUri())->toBe(
+        'https://demo.supabase.co/rest/v1/users'
+        . '?select=id%2Cname&age=gte.18&age=lte.65&or=%28name.eq.John%20Doe%2Cname.eq.Jane%29'
+    );
+});
+
+test('query still accepts the assoc array form (back-compat)', function () {
+    $client = new MockClient();
+    $client->queue(new Response(200, [], '{}'));
+    $transport = makeTransport($client);
+
+    $transport->request('GET', '/x', ['query' => ['a' => '1', 'b' => '2']]);
+
+    $request = $client->lastRequest;
+    assert($request instanceof RequestInterface);
+
+    expect((string) $request->getUri())->toBe('https://demo.supabase.co/x?a=1&b=2');
+});

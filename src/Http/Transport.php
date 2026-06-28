@@ -60,7 +60,7 @@ final class Transport
     }
 
     /**
-     * @param array{headers?: array<string,string>, query?: array<string,scalar>, body?: array<mixed>|string} $options
+     * @param array{headers?: array<string,string>, query?: array<string,scalar>|list<array{0:string,1:string}>, body?: array<mixed>|string} $options
      */
     public function request(string $method, string $path, array $options = []): ResponseInterface
     {
@@ -70,8 +70,20 @@ final class Transport
         }
 
         $url = rtrim($this->baseUrl, '/') . $path;
-        if (isset($options['query']) && $options['query'] !== []) {
-            $url .= '?' . http_build_query($options['query']);
+        $query = $options['query'] ?? null;
+        if (is_array($query) && $query !== []) {
+            if (array_is_list($query)) {
+                $first = reset($query);
+                if (is_array($first)) {
+                    /** @var list<array<int|string, string>> $query */
+                    $url .= '?' . $this->buildOrderedQueryString($query);
+                } else {
+                    $url .= '?' . http_build_query($query);
+                }
+            } else {
+                /** @var array<string, scalar> $query */
+                $url .= '?' . http_build_query($query);
+            }
         }
 
         $request = $this->requestFactory->createRequest($method, $url);
@@ -103,5 +115,24 @@ final class Transport
         } catch (ClientExceptionInterface $e) {
             throw new SupabaseException($e->getMessage(), previous: $e);
         }
+    }
+
+    /**
+     * Builds a query string from an ordered list of key-value pairs.
+     * Preserves order and allows duplicate keys.
+     *
+     * @param list<array<int|string, string>> $pairs
+     */
+    private function buildOrderedQueryString(array $pairs): string
+    {
+        $parts = [];
+        foreach ($pairs as $pair) {
+            if (count($pair) >= 2) {
+                $key = $pair[0];
+                $value = $pair[1];
+                $parts[] = rawurlencode($key) . '=' . rawurlencode($value);
+            }
+        }
+        return implode('&', $parts);
     }
 }
