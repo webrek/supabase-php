@@ -8,10 +8,14 @@ use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use Supabase\Functions\FunctionsClient;
 use Supabase\Http\Transport;
+use Supabase\Postgrest\PostgrestClient;
+use Supabase\Postgrest\QueryBuilder;
 
 final class Client
 {
     private readonly Transport $transport;
+
+    private readonly string $schema;
 
     public function __construct(string $url, #[\SensitiveParameter] string $apiKey, ?ClientOptions $options = null)
     {
@@ -44,6 +48,8 @@ final class Client
         }
 
         $options ??= new ClientOptions();
+
+        $this->schema = $options->schema;
 
         $httpClient = $options->httpClient ?? Psr18ClientDiscovery::find();
         $requestFactory = $options->requestFactory ?? Psr17FactoryDiscovery::findRequestFactory();
@@ -96,5 +102,12 @@ final class Client
     public function functions(): FunctionsClient
     {
         return $this->functions ??= new FunctionsClient($this->transport);
+    }
+
+    private ?PostgrestClient $postgrest = null;
+
+    public function from(string $table): QueryBuilder
+    {
+        return ($this->postgrest ??= new PostgrestClient($this->transport, $this->schema))->from($table);
     }
 }
