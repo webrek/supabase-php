@@ -78,6 +78,11 @@ test('is true serializes to PostgREST query param', function () {
     expect($result)->toBe('select=%2A&active=is.true');
 });
 
+test('is false serializes to PostgREST query param', function () {
+    $result = queryFor(fn (FilterBuilder $b) => $b->is('active', false));
+    expect($result)->toBe('select=%2A&active=is.false');
+});
+
 test('is null serializes to PostgREST query param', function () {
     $result = queryFor(fn (FilterBuilder $b) => $b->is('deleted', null));
     expect($result)->toBe('select=%2A&deleted=is.null');
@@ -101,6 +106,11 @@ test('not serializes to PostgREST query param', function () {
 test('or serializes to PostgREST query param', function () {
     $result = queryFor(fn (FilterBuilder $b) => $b->or('age.gte.18,age.lte.65'));
     expect($result)->toBe('select=%2A&or=%28age.gte.18%2Cage.lte.65%29');
+});
+
+test('or with referencedTable uses dotted key syntax', function () {
+    $result = queryFor(fn (FilterBuilder $b) => $b->or('a.eq.1,b.eq.2', 'authors'));
+    expect($result)->toBe('select=%2A&authors.or=%28a.eq.1%2Cb.eq.2%29');
 });
 
 test('filter serializes to PostgREST query param', function () {

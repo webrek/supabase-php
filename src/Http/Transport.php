@@ -75,7 +75,7 @@ final class Transport
             if (array_is_list($query)) {
                 $first = reset($query);
                 if (is_array($first)) {
-                    /** @var list<array<int|string, string>> $query */
+                    /** @var list<array{0:string,1:string}> $query */
                     $url .= '?' . $this->buildOrderedQueryString($query);
                 } else {
                     $url .= '?' . http_build_query($query);
@@ -121,17 +121,13 @@ final class Transport
      * Builds a query string from an ordered list of key-value pairs.
      * Preserves order and allows duplicate keys.
      *
-     * @param list<array<int|string, string>> $pairs
+     * @param list<array{0:string,1:string}> $pairs
      */
     private function buildOrderedQueryString(array $pairs): string
     {
         $parts = [];
-        foreach ($pairs as $pair) {
-            if (count($pair) >= 2) {
-                $key = $pair[0];
-                $value = $pair[1];
-                $parts[] = rawurlencode($key) . '=' . rawurlencode($value);
-            }
+        foreach ($pairs as [$key, $value]) {
+            $parts[] = rawurlencode($key) . '=' . rawurlencode($value);
         }
         return implode('&', $parts);
     }

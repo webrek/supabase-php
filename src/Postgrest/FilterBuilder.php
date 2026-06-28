@@ -62,6 +62,7 @@ class FilterBuilder
         $this->headers['Prefer'] = implode(',', $prefs);
     }
 
+    /** @internal */
     public function upsertPrefer(?string $onConflict): void
     {
         $this->mergePrefer('resolution=merge-duplicates');
@@ -150,9 +151,10 @@ class FilterBuilder
         return $this;
     }
 
-    public function or(string $filters): static
+    public function or(string $filters, ?string $referencedTable = null): static
     {
-        $this->addParam('or', '(' . $filters . ')');
+        $key = $referencedTable !== null ? $referencedTable . '.or' : 'or';
+        $this->addParam($key, '(' . $filters . ')');
 
         return $this;
     }

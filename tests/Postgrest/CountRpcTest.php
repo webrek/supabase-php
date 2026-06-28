@@ -8,6 +8,7 @@ use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use Supabase\Client;
 use Supabase\ClientOptions;
+use Supabase\Exception\PostgrestException;
 use Supabase\Tests\Support\MockClient;
 
 function crClient(MockClient $http): Client
@@ -26,6 +27,24 @@ test('count issues a HEAD with count Prefer and parses Content-Range', function 
         ->and($http->lastRequest->getHeaderLine('Prefer'))->toContain('count=exact')
         ->and((string) $http->lastRequest->getUri())->toBe('https://demo.supabase.co/rest/v1/users?select=%2A&active=eq.true')
         ->and($n)->toBe(42);
+});
+
+test('count throws PostgrestException on a 4xx response', function () {
+    $http = new MockClient();
+    $body = '{"message":"Not Found","code":"PGRST204"}';
+    $http->queue(new Response(404, ['Content-Type' => 'application/json'], $body));
+
+    expect(fn () => crClient($http)->from('users')->select('*')->count())
+        ->toThrow(PostgrestException::class);
+});
+
+test('count parses the range/total Content-Range format', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Range' => '0-9/100']));
+    $n = crClient($http)->from('users')->select('*')->count();
+
+    \assert($http->lastRequest !== null);
+    expect($n)->toBe(100);
 });
 
 test('rpc posts params to the function endpoint and decodes the result', function () {

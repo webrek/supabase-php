@@ -62,8 +62,24 @@ test('overlaps array serializes correctly', function () {
     expect(advQuery(fn ($b) => $b->overlaps('t', ['a'])))->toBe('select=%2A&t=ov.%7B%22a%22%7D');
 });
 
+test('overlaps string serializes correctly', function () {
+    expect(advQuery(fn ($b) => $b->overlaps('t', '(1,5)')))->toBe('select=%2A&t=ov.%281%2C5%29');
+});
+
+test('containedBy string serializes correctly', function () {
+    expect(advQuery(fn ($b) => $b->containedBy('range', '[1,5]')))->toBe('select=%2A&range=cd.%5B1%2C5%5D');
+});
+
 test('textSearch fts serializes correctly', function () {
     expect(advQuery(fn ($b) => $b->textSearch('body', 'cat')))->toBe('select=%2A&body=fts.cat');
+});
+
+test('textSearch phfts no config serializes correctly', function () {
+    expect(advQuery(fn ($b) => $b->textSearch('body', 'cat', null, 'phfts')))->toBe('select=%2A&body=phfts.cat');
+});
+
+test('textSearch wfts with config serializes correctly', function () {
+    expect(advQuery(fn ($b) => $b->textSearch('body', 'cat', 'english', 'wfts')))->toBe('select=%2A&body=wfts%28english%29.cat');
 });
 
 test('textSearch plfts with config serializes correctly', function () {
