@@ -8,6 +8,7 @@ use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use Supabase\Functions\FunctionsClient;
 use Supabase\Http\Transport;
+use Supabase\Postgrest\FilterBuilder;
 use Supabase\Postgrest\PostgrestClient;
 use Supabase\Postgrest\QueryBuilder;
 
@@ -109,5 +110,13 @@ final class Client
     public function from(string $table): QueryBuilder
     {
         return ($this->postgrest ??= new PostgrestClient($this->transport, $this->schema))->from($table);
+    }
+
+    /**
+     * @param array<mixed> $params
+     */
+    public function rpc(string $function, array $params = []): FilterBuilder
+    {
+        return ($this->postgrest ??= new PostgrestClient($this->transport, $this->schema))->rpc($function, $params);
     }
 }

@@ -331,6 +331,25 @@ class FilterBuilder
         return $this->decode($response);
     }
 
+    public function count(string $type = 'exact'): int
+    {
+        $this->mergePrefer('count=' . $type);
+        $response = $this->send('HEAD');
+        if ($response->getStatusCode() >= 400) {
+            throw PostgrestException::fromResponse($response);
+        }
+
+        $range = $response->getHeaderLine('Content-Range');
+        $slash = strrpos($range, '/');
+        if ($slash === false) {
+            return 0;
+        }
+
+        $total = substr($range, $slash + 1);
+
+        return is_numeric($total) ? (int) $total : 0;
+    }
+
     protected function addParam(string $key, string $value): void
     {
         $this->params[] = [$key, $value];
