@@ -9,6 +9,7 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\StreamInterface;
 use Supabase\Exception\SupabaseException;
 
 final class Transport
@@ -60,7 +61,7 @@ final class Transport
     }
 
     /**
-     * @param array{headers?: array<string,string>, query?: array<string,scalar>|list<array{0:string,1:string}>, body?: array<mixed>|string} $options
+     * @param array{headers?: array<string,string>, query?: array<string,scalar>|list<array{0:string,1:string}>, body?: array<mixed>|string|StreamInterface} $options
      */
     public function request(string $method, string $path, array $options = []): ResponseInterface
     {
@@ -95,15 +96,19 @@ final class Transport
 
         if (array_key_exists('body', $options)) {
             $body = $options['body'];
-            if (is_array($body)) {
+            if ($body instanceof StreamInterface) {
+                $request = $request->withBody($body);
+            } elseif (is_array($body)) {
                 $headers['Content-Type'] ??= 'application/json';
                 try {
                     $body = json_encode($body, JSON_THROW_ON_ERROR);
                 } catch (\JsonException $e) {
                     throw new SupabaseException('Failed to encode request body as JSON: ' . $e->getMessage(), previous: $e);
                 }
+                $request = $request->withBody($this->streamFactory->createStream($body));
+            } else {
+                $request = $request->withBody($this->streamFactory->createStream($body));
             }
-            $request = $request->withBody($this->streamFactory->createStream($body));
         }
 
         foreach ($headers as $name => $value) {

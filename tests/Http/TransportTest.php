@@ -208,3 +208,19 @@ test('query still accepts the assoc array form (back-compat)', function () {
 
     expect((string) $request->getUri())->toBe('https://demo.supabase.co/x?a=1&b=2');
 });
+
+test('body accepts a StreamInterface and uses it directly', function () {
+    $client = new MockClient();
+    $client->queue(new Response(200, [], '{}'));
+    $transport = makeTransport($client);
+
+    $stream = (new Psr17Factory())->createStream('raw-bytes');
+    $transport->request('POST', '/object/b/a.txt', ['body' => $stream]);
+
+    $request = $client->lastRequest;
+    assert($request instanceof RequestInterface);
+
+    expect((string) $request->getBody())->toBe('raw-bytes')
+        // a stream body must NOT be forced to application/json
+        ->and($request->getHeaderLine('Content-Type'))->toBe('');
+});
