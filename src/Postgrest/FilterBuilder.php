@@ -28,13 +28,16 @@ class FilterBuilder
         private readonly string $method,
         private readonly string $schema,
         private readonly ?array $body = null,
+        private readonly bool $defaultReturnMinimal = true,
     ) {
         if ($this->schema !== '' && $this->schema !== 'public') {
             $header = in_array($this->method, ['GET', 'HEAD'], true) ? 'Accept-Profile' : 'Content-Profile';
             $this->headers[$header] = $this->schema;
         }
 
-        if (! in_array($this->method, ['GET', 'HEAD'], true)) {
+        // Table mutations default to `return=minimal`; RPC must NOT (PostgREST would
+        // return 204/empty and the function result would be lost).
+        if ($this->defaultReturnMinimal && ! in_array($this->method, ['GET', 'HEAD'], true)) {
             $this->mergePrefer('return=minimal');
         }
     }

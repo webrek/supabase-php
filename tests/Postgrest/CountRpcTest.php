@@ -37,5 +37,6 @@ test('rpc posts params to the function endpoint and decodes the result', functio
     expect($http->lastRequest->getMethod())->toBe('POST')
         ->and((string) $http->lastRequest->getUri())->toBe('https://demo.supabase.co/rest/v1/rpc/add')
         ->and((string) $http->lastRequest->getBody())->toBe('{"a":1,"b":2}')
+        ->and($http->lastRequest->getHeaderLine('Prefer'))->not->toContain('return=minimal')
         ->and($res)->toBe([['sum' => 3]]);
 });

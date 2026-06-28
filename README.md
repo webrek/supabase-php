@@ -60,6 +60,10 @@ $rows = $supabase->from('users')
 // Select a single row
 $user = $supabase->from('users')->select('*')->eq('id', 1)->single()->execute();
 
+// maybeSingle(): returns the first matching row, or null if there are none.
+// Note: unlike supabase-js it does NOT error when several rows match — it returns the first.
+$maybe = $supabase->from('users')->select('*')->eq('email', 'a@b.com')->maybeSingle()->execute();
+
 // Insert (returns rows when you chain ->select())
 $created = $supabase->from('users')->insert(['email' => 'a@b.com'])->select()->execute();
 

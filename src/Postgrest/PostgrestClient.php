@@ -30,6 +30,7 @@ final class PostgrestClient
             'POST',
             $this->schema,
             $params,
+            defaultReturnMinimal: false,
         );
     }
 }
