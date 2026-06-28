@@ -7,11 +7,14 @@ namespace Supabase;
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use Supabase\Auth\GoTrueClient;
+use Supabase\Exception\RealtimeException;
 use Supabase\Functions\FunctionsClient;
 use Supabase\Http\Transport;
 use Supabase\Postgrest\FilterBuilder;
 use Supabase\Postgrest\PostgrestClient;
 use Supabase\Postgrest\QueryBuilder;
+use Supabase\Realtime\RealtimeClient;
+use Supabase\Realtime\WebSocketConnectionFactory;
 use Supabase\Storage\StorageClient;
 
 final class Client
@@ -21,6 +24,10 @@ final class Client
     private readonly string $schema;
 
     private readonly string $url;
+
+    private readonly string $apiKey;
+
+    private readonly ?WebSocketConnectionFactory $webSocketFactory;
 
     public function __construct(string $url, #[\SensitiveParameter] string $apiKey, ?ClientOptions $options = null)
     {
@@ -56,6 +63,8 @@ final class Client
 
         $this->url = $url;
         $this->schema = $options->schema;
+        $this->apiKey = $apiKey;
+        $this->webSocketFactory = $options->webSocketFactory;
 
         $httpClient = $options->httpClient ?? Psr18ClientDiscovery::find();
         $requestFactory = $options->requestFactory ?? Psr17FactoryDiscovery::findRequestFactory();
@@ -115,6 +124,19 @@ final class Client
     public function storage(): StorageClient
     {
         return $this->storage ??= new StorageClient($this->transport, $this->url);
+    }
+
+    private ?RealtimeClient $realtime = null;
+
+    public function realtime(): RealtimeClient
+    {
+        if ($this->webSocketFactory === null) {
+            throw new RealtimeException(
+                'Realtime requires a WebSocketConnectionFactory. Provide one via ClientOptions(webSocketFactory: ...). See the README.'
+            );
+        }
+
+        return $this->realtime ??= new RealtimeClient($this->webSocketFactory, $this->url, $this->apiKey);
     }
 
     private ?FunctionsClient $functions = null;

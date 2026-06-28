@@ -8,6 +8,7 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Supabase\Http\HeaderRedaction;
+use Supabase\Realtime\WebSocketConnectionFactory;
 
 final readonly class ClientOptions
 {
@@ -21,6 +22,7 @@ final readonly class ClientOptions
         public array $headers = [],
         public string $schema = 'public',
         #[\SensitiveParameter] public ?string $accessToken = null,
+        public ?WebSocketConnectionFactory $webSocketFactory = null,
     ) {
     }
 
@@ -40,6 +42,7 @@ final readonly class ClientOptions
             'headers' => HeaderRedaction::redact($this->headers),
             'schema' => $this->schema,
             'accessToken' => $this->accessToken === null ? null : HeaderRedaction::REDACTED,
+            'webSocketFactory' => $this->webSocketFactory,
         ];
     }
 
