@@ -11,7 +11,7 @@ class AuthException extends SupabaseException
         // Fall back to the raw body on a PCRE error (preg_replace returns null) — an
         // empty body is a worse failure mode than an unredacted one.
         return preg_replace(
-            '/"(access_token|refresh_token|provider_token|id_token)"\s*:\s*"[^"]*"/',
+            '/"(access_token|refresh_token|provider_token|id_token|hashed_token|email_otp|action_link|recovery_token)"\s*:\s*"[^"]*"/',
             '"$1":"***redacted***"',
             $body,
         ) ?? $body;
