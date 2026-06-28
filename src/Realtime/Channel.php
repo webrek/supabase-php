@@ -22,6 +22,9 @@ final class Channel
     /** @var list<array{event: string, schema: string, table: string, filter: ?string, callback: callable}> */
     private array $postgresBindings = [];
 
+    /** @var list<array{event: string, callback: callable}> */
+    private array $broadcastBindings = [];
+
     /** @var array<int, int> binding index => server-assigned id */
     private array $postgresIds = [];
 
@@ -50,6 +53,25 @@ final class Channel
         ];
 
         return $this;
+    }
+
+    public function onBroadcast(string $event, callable $callback): self
+    {
+        $this->broadcastBindings[] = ['event' => $event, 'callback' => $callback];
+
+        return $this;
+    }
+
+    /**
+     * @param array<mixed> $payload
+     */
+    public function send(string $event, array $payload): void
+    {
+        ($this->pusher)('broadcast', [
+            'type' => 'broadcast',
+            'event' => $event,
+            'payload' => $payload,
+        ], false);
     }
 
     public function subscribe(?callable $onStatus = null): self
@@ -102,6 +124,9 @@ final class Channel
                 break;
             case 'postgres_changes':
                 $this->handlePostgresChanges($payload);
+                break;
+            case 'broadcast':
+                $this->handleBroadcast($payload);
                 break;
             case 'phx_error':
                 $this->state = self::STATE_ERRORED;
@@ -169,6 +194,19 @@ final class Channel
             $bindingId = $this->postgresIds[$index] ?? null;
             if ($bindingId !== null && in_array($bindingId, $ids, true)) {
                 ($binding['callback'])($data);
+            }
+        }
+    }
+
+    /**
+     * @param array<mixed> $payload
+     */
+    private function handleBroadcast(array $payload): void
+    {
+        $event = isset($payload['event']) && is_string($payload['event']) ? $payload['event'] : '';
+        foreach ($this->broadcastBindings as $binding) {
+            if ($binding['event'] === '*' || $binding['event'] === $event) {
+                ($binding['callback'])($payload);
             }
         }
     }
