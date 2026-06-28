@@ -74,6 +74,54 @@ final class FileApi
         ]);
     }
 
+    public function createSignedUrl(string $path, int $expiresIn): string
+    {
+        $data = $this->http->requestJson('POST', '/object/sign/' . rawurlencode($this->bucketId) . '/' . $this->encodePath($path), [
+            'body' => ['expiresIn' => $expiresIn],
+        ]);
+        $signed = isset($data['signedURL']) && is_string($data['signedURL']) ? $data['signedURL'] : '';
+
+        return rtrim($this->baseUrl, '/') . '/storage/v1' . $signed;
+    }
+
+    /**
+     * @param list<string> $paths
+     * @return array<mixed>
+     */
+    public function createSignedUrls(array $paths, int $expiresIn): array
+    {
+        return $this->http->requestJson('POST', '/object/sign/' . rawurlencode($this->bucketId), [
+            'body' => ['expiresIn' => $expiresIn, 'paths' => $paths],
+        ]);
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    public function createSignedUploadUrl(string $path): array
+    {
+        return $this->http->requestJson('POST', '/object/upload/sign/' . rawurlencode($this->bucketId) . '/' . $this->encodePath($path));
+    }
+
+    /**
+     * @param string|StreamInterface $contents
+     * @param array{contentType?: string} $options
+     * @return array<mixed>
+     */
+    public function uploadToSignedUrl(string $path, string $token, string|StreamInterface $contents, array $options = []): array
+    {
+        return $this->http->requestJson('PUT', '/object/upload/sign/' . rawurlencode($this->bucketId) . '/' . $this->encodePath($path), [
+            'query' => [['token', $token]],
+            'headers' => ['Content-Type' => $options['contentType'] ?? 'application/octet-stream'],
+            'body' => $contents,
+        ]);
+    }
+
+    public function getPublicUrl(string $path): string
+    {
+        return rtrim($this->baseUrl, '/') . '/storage/v1/object/public/' . rawurlencode($this->bucketId) . '/' . $this->encodePath($path);
+    }
+
     private function objectPath(string $path): string
     {
         return '/object/' . rawurlencode($this->bucketId) . '/' . $this->encodePath($path);
