@@ -25,6 +25,7 @@ final class FakeStream implements StreamInterface
         private readonly string $content = '',
         private readonly ?int $size = null,
         private readonly bool $throwOnRead = false,
+        private readonly bool $throwOnGetSize = false,
     ) {
     }
 
@@ -47,6 +48,10 @@ final class FakeStream implements StreamInterface
 
     public function getSize(): ?int
     {
+        if ($this->throwOnGetSize) {
+            throw new \RuntimeException('getSize boom');
+        }
+
         return $this->size;
     }
 

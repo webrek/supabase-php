@@ -54,3 +54,10 @@ test('read rejects via getSize before reading any bytes', function () {
 
     expect($stream->readCalls)->toBe(0);
 });
+
+test('read wraps a RuntimeException from getSize in a SupabaseException', function () {
+    $stream = new FakeStream('whatever', throwOnGetSize: true);
+
+    expect(fn () => ResponseBody::read($stream))
+        ->toThrow(SupabaseException::class, 'Failed to read response body');
+});
