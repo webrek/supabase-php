@@ -66,4 +66,60 @@ final class GoTrueClient
             'headers' => ['Authorization' => 'Bearer ' . $jwt],
         ]);
     }
+
+    /**
+     * @param array<string,mixed> $params
+     */
+    public function signInWithOtp(array $params): void
+    {
+        $this->http->request('POST', '/otp', ['body' => $params]);
+    }
+
+    /**
+     * @param array<string,mixed> $params
+     */
+    public function verifyOtp(array $params): Session
+    {
+        return Session::fromArray($this->http->request('POST', '/verify', ['body' => $params]));
+    }
+
+    /**
+     * @param array<string,mixed> $options
+     */
+    public function resetPasswordForEmail(string $email, array $options = []): void
+    {
+        $this->http->request('POST', '/recover', ['body' => ['email' => $email] + $options]);
+    }
+
+    /**
+     * @param array<string,mixed> $attributes
+     */
+    public function updateUser(string $jwt, array $attributes): User
+    {
+        $data = $this->http->request('PUT', '/user', [
+            'headers' => ['Authorization' => 'Bearer ' . $jwt],
+            'body' => $attributes,
+        ]);
+
+        return User::fromArray($data);
+    }
+
+    /**
+     * @param array<string,mixed> $options
+     */
+    public function getOAuthSignInUrl(string $provider, array $options = []): string
+    {
+        // RFC 3986 so spaces encode as %20 (not +), which OAuth servers expect in redirect_to.
+        $query = http_build_query(['provider' => $provider] + $options, encoding_type: PHP_QUERY_RFC3986);
+
+        return rtrim($this->baseUrl, '/') . '/auth/v1/authorize?' . $query;
+    }
+
+    /**
+     * @param array<string,mixed> $params
+     */
+    public function resend(array $params): void
+    {
+        $this->http->request('POST', '/resend', ['body' => $params]);
+    }
 }
