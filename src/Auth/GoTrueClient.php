@@ -10,9 +10,16 @@ final class GoTrueClient
 {
     private readonly AuthHttp $http;
 
+    private ?AdminClient $admin = null;
+
     public function __construct(Transport $transport, private readonly string $baseUrl)
     {
         $this->http = new AuthHttp($transport);
+    }
+
+    public function admin(): AdminClient
+    {
+        return $this->admin ??= new AdminClient($this->http);
     }
 
     /**
