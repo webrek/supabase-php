@@ -39,4 +39,43 @@ final class AdminClient
             'body' => ['should_soft_delete' => $shouldSoftDelete],
         ]);
     }
+
+    /**
+     * @return list<User>
+     */
+    public function listUsers(int $page = 1, int $perPage = 50): array
+    {
+        $data = $this->http->request('GET', '/admin/users', [
+            'query' => [['page', (string) $page], ['per_page', (string) $perPage]],
+        ]);
+
+        $rows = isset($data['users']) && is_array($data['users']) ? $data['users'] : [];
+
+        $users = [];
+        foreach ($rows as $row) {
+            if (is_array($row)) {
+                /** @var array<string,mixed> $row */
+                $users[] = User::fromArray($row);
+            }
+        }
+
+        return $users;
+    }
+
+    /**
+     * @param array<string,mixed> $options
+     */
+    public function inviteUserByEmail(string $email, array $options = []): User
+    {
+        return User::fromArray($this->http->request('POST', '/invite', ['body' => ['email' => $email] + $options]));
+    }
+
+    /**
+     * @param array<string,mixed> $params
+     * @return array<string,mixed>
+     */
+    public function generateLink(array $params): array
+    {
+        return $this->http->request('POST', '/admin/generate_link', ['body' => $params]);
+    }
 }
