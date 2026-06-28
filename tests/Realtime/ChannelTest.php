@@ -108,3 +108,31 @@ test('presence and unknown events are ignored without error', function () {
     $ch->handleMessage('something_else', [], null);
     expect($ch->state())->toBe('closed');
 });
+
+test('phx_error event transitions channel to errored state', function () {
+    $calls = [];
+    $status = [];
+    $ch = recordingChannel($calls);
+    $ch->subscribe(function (string $s) use (&$status): void {
+        $status[] = $s;
+    });
+
+    $ch->handleMessage('phx_error', [], null);
+
+    expect($ch->state())->toBe('errored')
+        ->and($status)->toBe(['error']);
+});
+
+test('phx_close event transitions channel to closed state', function () {
+    $calls = [];
+    $status = [];
+    $ch = recordingChannel($calls);
+    $ch->subscribe(function (string $s) use (&$status): void {
+        $status[] = $s;
+    });
+
+    $ch->handleMessage('phx_close', [], null);
+
+    expect($ch->state())->toBe('closed')
+        ->and($status)->toBe(['closed']);
+});

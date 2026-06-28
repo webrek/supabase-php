@@ -33,3 +33,16 @@ test('ClientOptions __debugInfo exposes the webSocketFactory key', function () {
     $opts = new ClientOptions(webSocketFactory: new MockWebSocketConnectionFactory(new MockWebSocketConnection()));
     expect(array_key_exists('webSocketFactory', $opts->__debugInfo()))->toBeTrue();
 });
+
+test('ClientOptions realtimeHeartbeatInterval is passed through to RealtimeClient', function () {
+    $factory = new MockWebSocketConnectionFactory(new MockWebSocketConnection());
+    $options = new ClientOptions(
+        httpClient: new MockClient(),
+        webSocketFactory: $factory,
+        realtimeHeartbeatInterval: 10.0,
+    );
+    $client = new Client('https://example.supabase.co', 'key', $options);
+    $realtime = $client->realtime();
+    $debug = $realtime->__debugInfo();
+    expect($debug['heartbeatInterval'])->toBe(10.0);
+});

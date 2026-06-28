@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Supabase\Storage;
 
 use Psr\Http\Message\StreamInterface;
+use Supabase\Exception\StorageException;
 
 final class FileApi
 {
@@ -79,9 +80,12 @@ final class FileApi
         $data = $this->http->requestJson('POST', '/object/sign/' . rawurlencode($this->bucketId) . '/' . $this->encodePath($path), [
             'body' => ['expiresIn' => $expiresIn],
         ]);
-        $signed = isset($data['signedURL']) && is_string($data['signedURL']) ? $data['signedURL'] : '';
 
-        return rtrim($this->baseUrl, '/') . '/storage/v1' . $signed;
+        if (!isset($data['signedURL']) || !is_string($data['signedURL'])) {
+            throw new StorageException('Unexpected response from storage: missing signedURL field');
+        }
+
+        return rtrim($this->baseUrl, '/') . '/storage/v1' . $data['signedURL'];
     }
 
     /**

@@ -6,13 +6,8 @@ namespace Supabase\Exception;
 
 class StorageException extends SupabaseException
 {
-    protected static function redactResponseBody(string $body): string
+    protected static function extraRedactionKeys(): array
     {
-        // Fall back to the raw body on a PCRE error (preg_replace returns null).
-        return preg_replace(
-            '/"(token|signedURL|signedUrl|key)"\s*:\s*"[^"]*"/',
-            '"$1":"***redacted***"',
-            $body,
-        ) ?? $body;
+        return ['signedURL', 'signedUrl', 'key'];
     }
 }

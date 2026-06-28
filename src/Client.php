@@ -30,6 +30,8 @@ final class Client
 
     private readonly ?WebSocketConnectionFactory $webSocketFactory;
 
+    private readonly float $realtimeHeartbeatInterval;
+
     public function __construct(string $url, #[\SensitiveParameter] string $apiKey, ?ClientOptions $options = null)
     {
         $parsed = parse_url($url);
@@ -66,6 +68,7 @@ final class Client
         $this->schema = $options->schema;
         $this->apiKey = $apiKey;
         $this->webSocketFactory = $options->webSocketFactory;
+        $this->realtimeHeartbeatInterval = $options->realtimeHeartbeatInterval;
 
         $httpClient = $options->httpClient ?? Psr18ClientDiscovery::find();
         $requestFactory = $options->requestFactory ?? Psr17FactoryDiscovery::findRequestFactory();
@@ -151,7 +154,12 @@ final class Client
             );
         }
 
-        return $this->realtime ??= new RealtimeClient($this->webSocketFactory, $this->url, $this->apiKey);
+        return $this->realtime ??= new RealtimeClient(
+            $this->webSocketFactory,
+            $this->url,
+            $this->apiKey,
+            heartbeatInterval: $this->realtimeHeartbeatInterval,
+        );
     }
 
     private ?FunctionsClient $functions = null;

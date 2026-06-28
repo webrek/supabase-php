@@ -10,7 +10,7 @@ use Psr\Http\Message\StreamFactoryInterface;
 use Supabase\Http\HeaderRedaction;
 use Supabase\Realtime\WebSocketConnectionFactory;
 
-final readonly class ClientOptions
+final readonly class ClientOptions implements \JsonSerializable
 {
     /**
      * @param array<string, string> $headers
@@ -23,6 +23,7 @@ final readonly class ClientOptions
         public string $schema = 'public',
         #[\SensitiveParameter] public ?string $accessToken = null,
         public ?WebSocketConnectionFactory $webSocketFactory = null,
+        public float $realtimeHeartbeatInterval = 30.0,
     ) {
     }
 
@@ -43,7 +44,19 @@ final readonly class ClientOptions
             'schema' => $this->schema,
             'accessToken' => $this->accessToken === null ? null : HeaderRedaction::REDACTED,
             'webSocketFactory' => $this->webSocketFactory,
+            'realtimeHeartbeatInterval' => $this->realtimeHeartbeatInterval,
         ];
+    }
+
+    /**
+     * Returns a redacted representation when json_encode() is called on this object.
+     * Prevents credentials leaking into JSON-serialized logs or responses.
+     *
+     * @return array<string, mixed>
+     */
+    public function jsonSerialize(): array
+    {
+        return $this->__debugInfo();
     }
 
     /**

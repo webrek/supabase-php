@@ -96,15 +96,21 @@ class SupabaseException extends RuntimeException
         return new $class($message, $statusCode, $errorCode, $redactedBody);
     }
 
-    /**
-     * Hook for subclasses to redact sensitive data from response bodies.
-     * Override this method in subclasses that need to redact specific fields.
-     *
-     * @param string $body The raw response body.
-     * @return string The redacted response body (default: unchanged).
-     */
+    /** @return list<string> */
+    protected static function extraRedactionKeys(): array
+    {
+        return [];
+    }
+
     protected static function redactResponseBody(string $body): string
     {
-        return $body;
+        $keys = array_merge(
+            ['apikey', 'access_token', 'refresh_token', 'token', 'password', 'secret'],
+            static::extraRedactionKeys(),
+        );
+
+        $pattern = '/"(' . implode('|', array_map(static fn (string $k): string => preg_quote($k, '/'), $keys)) . ')"\s*:\s*"[^"]*"/i';
+
+        return preg_replace($pattern, '"$1":"***redacted***"', $body) ?? $body;
     }
 }

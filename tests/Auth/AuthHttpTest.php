@@ -51,3 +51,11 @@ test('request returns [] for an empty body', function () {
     $client->queue(new Response(204, [], ''));
     expect(authHttp($client)->request('POST', '/logout'))->toBe([]);
 });
+
+test('request throws AuthException when 2xx response has invalid JSON body', function () {
+    $client = new MockClient();
+    $client->queue(new Response(200, ['Content-Type' => 'application/json'], 'not-json'));
+
+    expect(fn () => authHttp($client)->request('GET', '/test'))
+        ->toThrow(AuthException::class, 'Invalid JSON in Auth response');
+});

@@ -20,7 +20,7 @@ test('StorageException redacts signed-url token fields', function () {
         ->and($stored)->toContain('bad');
 });
 
-test('PostgrestException still does NOT redact', function () {
+test('PostgrestException redacts token via baseline', function () {
     $e = PostgrestException::fromResponse(new Response(400, [], '{"token":"AAA","message":"x"}'));
-    expect((string) $e->getResponseBody())->toContain('AAA');
+    expect((string) $e->getResponseBody())->not->toContain('AAA');
 });

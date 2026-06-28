@@ -34,8 +34,8 @@ test('AuthException redacts admin link/token fields', function () {
         ->and($stored)->toContain('sent');
 });
 
-test('PostgrestException does NOT redact (base behavior unchanged)', function () {
+test('PostgrestException redacts access_token via baseline', function () {
     $body = '{"access_token":"AT","message":"x"}';
     $e = PostgrestException::fromResponse(new Response(400, [], $body));
-    expect((string) $e->getResponseBody())->toContain('AT');
+    expect((string) $e->getResponseBody())->not->toContain('AT');
 });

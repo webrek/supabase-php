@@ -6,14 +6,8 @@ namespace Supabase\Exception;
 
 class AuthException extends SupabaseException
 {
-    protected static function redactResponseBody(string $body): string
+    protected static function extraRedactionKeys(): array
     {
-        // Fall back to the raw body on a PCRE error (preg_replace returns null) — an
-        // empty body is a worse failure mode than an unredacted one.
-        return preg_replace(
-            '/"(access_token|refresh_token|provider_token|id_token|hashed_token|email_otp|action_link|recovery_token)"\s*:\s*"[^"]*"/',
-            '"$1":"***redacted***"',
-            $body,
-        ) ?? $body;
+        return ['provider_token', 'id_token', 'hashed_token', 'email_otp', 'action_link', 'recovery_token'];
     }
 }

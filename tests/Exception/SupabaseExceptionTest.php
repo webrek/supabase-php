@@ -6,6 +6,7 @@ namespace Supabase\Tests\Exception;
 
 use Nyholm\Psr7\Response;
 use Supabase\Exception\FunctionsException;
+use Supabase\Exception\PostgrestException;
 use Supabase\Exception\SupabaseException;
 
 test('stores status, code, and body', function () {
@@ -61,4 +62,24 @@ test('fromResponse does not throw on a malformed JSON body', function () {
 
     expect($e->getMessage())->toBe('Service Unavailable')
         ->and($e->getStatusCode())->toBe(503);
+});
+
+test('baseline redaction applies to PostgrestException (access_token now redacted)', function () {
+    $body = '{"access_token":"supersecret","message":"x"}';
+    $e = PostgrestException::fromResponse(new Response(400, [], $body));
+    expect((string) $e->getResponseBody())->not->toContain('supersecret')
+        ->and((string) $e->getResponseBody())->toContain('***redacted***');
+});
+
+test('baseline redaction covers all baseline keys across unspecialized subclass', function () {
+    $body = '{"apikey":"k1","access_token":"at","refresh_token":"rt","token":"t","password":"p","secret":"s","message":"ok"}';
+    $e = FunctionsException::fromResponse(new Response(400, [], $body));
+    $stored = (string) $e->getResponseBody();
+    expect($stored)->not->toContain('k1')
+        ->and($stored)->not->toContain('"at"')
+        ->and($stored)->not->toContain('"rt"')
+        ->and($stored)->not->toContain('"t"')
+        ->and($stored)->not->toContain('"p"')
+        ->and($stored)->not->toContain('"s"')
+        ->and($stored)->toContain('ok');
 });

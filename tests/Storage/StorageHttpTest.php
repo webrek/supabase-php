@@ -71,3 +71,11 @@ test('requestRaw enforces the maxBytes cap', function () {
     expect(fn () => storageHttp($client)->requestRaw('GET', '/object/b/big', [], 5))
         ->toThrow(\Supabase\Exception\SupabaseException::class);
 });
+
+test('requestJson throws StorageException when 2xx response has invalid JSON body', function () {
+    $client = new MockClient();
+    $client->queue(new Response(200, ['Content-Type' => 'application/json'], 'not-json{{{'));
+
+    expect(fn () => storageHttp($client)->requestJson('GET', '/test'))
+        ->toThrow(StorageException::class, 'Invalid JSON in Storage response');
+});

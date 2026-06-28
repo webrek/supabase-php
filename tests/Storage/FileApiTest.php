@@ -8,6 +8,7 @@ use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7\Response;
 use Supabase\Client;
 use Supabase\ClientOptions;
+use Supabase\Exception\StorageException;
 use Supabase\Tests\Support\MockClient;
 
 function fileClient(MockClient $http): Client
@@ -45,6 +46,14 @@ test('upload sets x-upsert when requested and encodes nested paths per segment',
     expect((string) $http->lastRequest->getUri())->toBe('https://demo.supabase.co/storage/v1/object/avatars/folder/my%20file.png')
         ->and($http->lastRequest->getHeaderLine('x-upsert'))->toBe('true')
         ->and($http->lastRequest->getHeaderLine('Content-Type'))->toBe('application/octet-stream');
+});
+
+test('createSignedUrl throws StorageException when response lacks signedURL field', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], '{"error":"something"}'));
+
+    expect(fn () => fileClient($http)->storage()->from('avatars')->createSignedUrl('photo.jpg', 3600))
+        ->toThrow(StorageException::class, 'missing signedURL');
 });
 
 test('download returns the raw bytes', function () {

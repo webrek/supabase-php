@@ -31,8 +31,11 @@ final class StorageHttp
             return [];
         }
 
-        /** @var array<mixed>|null $decoded */
-        $decoded = json_decode($body, true);
+        try {
+            $decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new StorageException('Invalid JSON in Storage response: ' . $e->getMessage(), previous: $e);
+        }
 
         return is_array($decoded) ? $decoded : [];
     }
@@ -49,6 +52,14 @@ final class StorageHttp
         }
 
         return ResponseBody::read($response->getBody(), $maxBytes);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array
+    {
+        return ['transport' => '[redacted]'];
     }
 
     public function __serialize(): array

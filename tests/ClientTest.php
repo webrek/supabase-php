@@ -185,6 +185,13 @@ test('ClientOptions __debugInfo redacts the access token and sensitive headers',
         ->and($output)->toContain('shown');
 });
 
+test('json_encode(ClientOptions) does not expose the raw accessToken', function () {
+    $options = new ClientOptions(accessToken: 'my-secret-token');
+    $json = json_encode($options);
+    expect($json)->not->toContain('my-secret-token')
+        ->and($json)->toContain('***redacted***');
+});
+
 test('ClientOptions must not be serialized', function () {
     expect(fn () => serialize(new ClientOptions(accessToken: 'x')))
         ->toThrow(\LogicException::class);

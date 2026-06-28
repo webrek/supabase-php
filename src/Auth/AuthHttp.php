@@ -31,8 +31,12 @@ final class AuthHttp
             return [];
         }
 
-        /** @var array<string, mixed>|null $decoded */
-        $decoded = json_decode($body, true);
+        try {
+            /** @var array<string, mixed>|null $decoded */
+            $decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new AuthException('Invalid JSON in Auth response: ' . $e->getMessage(), previous: $e);
+        }
 
         return is_array($decoded) ? $decoded : [];
     }
