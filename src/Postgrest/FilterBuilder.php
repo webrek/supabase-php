@@ -151,6 +151,79 @@ class FilterBuilder
         return $this;
     }
 
+    /**
+     * @param array<int,mixed>|string $value
+     */
+    public function contains(string $column, array|string $value): static
+    {
+        $this->addParam($column, 'cs.' . $this->formatArrayOrString($value));
+
+        return $this;
+    }
+
+    /**
+     * @param array<int,mixed>|string $value
+     */
+    public function containedBy(string $column, array|string $value): static
+    {
+        $this->addParam($column, 'cd.' . $this->formatArrayOrString($value));
+
+        return $this;
+    }
+
+    public function rangeGt(string $column, string $range): static
+    {
+        $this->addParam($column, 'sr.' . $range);
+
+        return $this;
+    }
+
+    public function rangeGte(string $column, string $range): static
+    {
+        $this->addParam($column, 'nxl.' . $range);
+
+        return $this;
+    }
+
+    public function rangeLt(string $column, string $range): static
+    {
+        $this->addParam($column, 'sl.' . $range);
+
+        return $this;
+    }
+
+    public function rangeLte(string $column, string $range): static
+    {
+        $this->addParam($column, 'nxr.' . $range);
+
+        return $this;
+    }
+
+    public function rangeAdjacent(string $column, string $range): static
+    {
+        $this->addParam($column, 'adj.' . $range);
+
+        return $this;
+    }
+
+    /**
+     * @param array<int,mixed>|string $value
+     */
+    public function overlaps(string $column, array|string $value): static
+    {
+        $this->addParam($column, 'ov.' . $this->formatArrayOrString($value));
+
+        return $this;
+    }
+
+    public function textSearch(string $column, string $query, ?string $config = null, string $type = 'fts'): static
+    {
+        $cfg = $config !== null ? '(' . $config . ')' : '';
+        $this->addParam($column, $type . $cfg . '.' . $query);
+
+        return $this;
+    }
+
     private function stringify(mixed $value): string
     {
         if (is_bool($value)) {
@@ -181,6 +254,18 @@ class FilterBuilder
         }
 
         return implode(',', $parts);
+    }
+
+    /**
+     * @param array<int,mixed>|string $value
+     */
+    private function formatArrayOrString(array|string $value): string
+    {
+        if (is_string($value)) {
+            return $value;
+        }
+
+        return '{' . $this->formatList($value) . '}';
     }
 
     /**
