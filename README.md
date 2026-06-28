@@ -4,9 +4,8 @@ Framework-agnostic PHP client for [Supabase](https://supabase.com). PHP 8.3+.
 
 ## Status
 
-**Available:** Auth (user flows), Edge Functions, Database (PostgREST)
+**Available:** Auth (user flows & admin), Edge Functions, Database (PostgREST)
 **Planned:** Storage, Realtime
-Note: Auth Admin API coming in a follow-up.
 
 ## Installation
 
@@ -126,6 +125,22 @@ Sessions are stateless: the SDK never stores or refreshes them automatically —
 `accessToken`/`refreshToken` yourself. Tokens are redacted in `var_dump`/`print_r`/`json_encode`
 and in `AuthException` bodies, and `Session` cannot be serialized. (PHP's `var_export()` cannot
 be intercepted — never `var_export()` a `Session`.)
+
+### Admin API (service_role)
+
+Construct the client with your **service_role** key (never expose it to browsers):
+
+```php
+$admin = (new Client('https://YOUR-PROJECT.supabase.co', 'YOUR-SERVICE-ROLE-KEY'))->auth()->admin();
+
+$user  = $admin->createUser(['email' => 'a@b.com', 'password' => 'pw']);
+$user  = $admin->getUserById($user->id);
+$user  = $admin->updateUserById($user->id, ['user_metadata' => ['role' => 'member']]);
+$users = $admin->listUsers(page: 1, perPage: 50);   // User[]
+$admin->inviteUserByEmail('new@b.com');
+$link  = $admin->generateLink(['type' => 'magiclink', 'email' => 'a@b.com']);
+$admin->deleteUser($user->id);
+```
 
 ## Injecting your own HTTP client
 
