@@ -45,6 +45,144 @@ class FilterBuilder
         return $this;
     }
 
+    public function eq(string $column, mixed $value): static
+    {
+        $this->addParam($column, 'eq.' . $this->stringify($value));
+
+        return $this;
+    }
+
+    public function neq(string $column, mixed $value): static
+    {
+        $this->addParam($column, 'neq.' . $this->stringify($value));
+
+        return $this;
+    }
+
+    public function gt(string $column, mixed $value): static
+    {
+        $this->addParam($column, 'gt.' . $this->stringify($value));
+
+        return $this;
+    }
+
+    public function gte(string $column, mixed $value): static
+    {
+        $this->addParam($column, 'gte.' . $this->stringify($value));
+
+        return $this;
+    }
+
+    public function lt(string $column, mixed $value): static
+    {
+        $this->addParam($column, 'lt.' . $this->stringify($value));
+
+        return $this;
+    }
+
+    public function lte(string $column, mixed $value): static
+    {
+        $this->addParam($column, 'lte.' . $this->stringify($value));
+
+        return $this;
+    }
+
+    public function like(string $column, string $pattern): static
+    {
+        $this->addParam($column, 'like.' . $pattern);
+
+        return $this;
+    }
+
+    public function ilike(string $column, string $pattern): static
+    {
+        $this->addParam($column, 'ilike.' . $pattern);
+
+        return $this;
+    }
+
+    public function is(string $column, null|bool $value): static
+    {
+        $this->addParam($column, 'is.' . ($value === null ? 'null' : ($value ? 'true' : 'false')));
+
+        return $this;
+    }
+
+    /**
+     * @param array<int,mixed> $values
+     */
+    public function in(string $column, array $values): static
+    {
+        $this->addParam($column, 'in.(' . $this->formatList($values) . ')');
+
+        return $this;
+    }
+
+    public function not(string $column, string $operator, mixed $value): static
+    {
+        $this->addParam($column, 'not.' . $operator . '.' . $this->stringify($value));
+
+        return $this;
+    }
+
+    public function or(string $filters): static
+    {
+        $this->addParam('or', '(' . $filters . ')');
+
+        return $this;
+    }
+
+    /**
+     * @param array<string,mixed> $query
+     */
+    public function match(array $query): static
+    {
+        foreach ($query as $col => $val) {
+            $this->eq($col, $val);
+        }
+
+        return $this;
+    }
+
+    public function filter(string $column, string $operator, mixed $value): static
+    {
+        $this->addParam($column, $operator . '.' . $this->stringify($value));
+
+        return $this;
+    }
+
+    private function stringify(mixed $value): string
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+        if ($value === null) {
+            return 'null';
+        }
+        if (is_scalar($value)) {
+            return (string) $value;
+        }
+
+        throw new \InvalidArgumentException('Filter value must be scalar or null.');
+    }
+
+    /**
+     * @param array<int,mixed> $values
+     */
+    private function formatList(array $values): string
+    {
+        $parts = [];
+        foreach ($values as $v) {
+            if (is_string($v)) {
+                $parts[] = '"' . str_replace('"', '\\"', $v) . '"';
+            } else {
+                $parts[] = $this->stringify($v);
+            }
+        }
+
+        return implode(',', $parts);
+    }
+
     /**
      * @return array<mixed>|null
      */
