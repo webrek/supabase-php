@@ -4,8 +4,8 @@ Framework-agnostic PHP client for [Supabase](https://supabase.com). PHP 8.3+.
 
 ## Status
 
-**Available:** Auth (user flows & admin), Edge Functions, Database (PostgREST)
-**Planned:** Storage, Realtime
+**Available:** Auth (user flows & admin), Edge Functions, Database (PostgREST), Storage
+**Planned:** Realtime
 
 ## Installation
 
@@ -95,6 +95,32 @@ $posts = $supabase->from('posts')
 ```
 
 The Database module supports the full set of PostgREST filtering operators — `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`, `ilike`, `is`, `in`, `contains`, `containedBy`, `rangeGt`, `rangeGte`, `rangeLt`, `rangeLte`, `rangeAdjacent`, `overlaps`, `textSearch`, `not`, `or`, `match`, and `filter` (escape hatch) — plus modifiers (`order`, `limit`, `range`, `single`, `maybeSingle`), `count()`, and error handling via `PostgrestException`.
+
+## Storage
+
+```php
+// Buckets
+$supabase->storage()->createBucket('avatars', ['public' => true]);
+$bucket  = $supabase->storage()->getBucket('avatars');   // Bucket
+$buckets = $supabase->storage()->listBuckets();          // Bucket[]
+
+// Objects
+$files = $supabase->storage();
+$files->from('avatars')->upload('me.png', $bytesOrStream, ['contentType' => 'image/png', 'upsert' => true]);
+$data  = $files->from('avatars')->download('me.png');    // raw bytes (capped at 50 MiB by default)
+$items = $files->from('avatars')->list('folder');
+$files->from('avatars')->move('me.png', 'old/me.png');
+$files->from('avatars')->copy('me.png', 'copy.png');
+$files->from('avatars')->remove(['old/me.png']);
+
+// URLs
+$signed = $files->from('avatars')->createSignedUrl('me.png', 60); // expires in 60s
+$public = $files->from('avatars')->getPublicUrl('me.png');        // for public buckets
+```
+
+`upload()` accepts a string or a PSR-7 `StreamInterface`. Storage uses the key the client was
+built with (anon respects Storage RLS policies; service_role bypasses them). `download()` caps at
+50 MiB by default — raise the `maxBytes` argument or use a signed URL for larger files.
 
 ## Auth (GoTrue)
 
