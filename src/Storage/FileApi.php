@@ -38,6 +38,42 @@ final class FileApi
         return $this->http->requestRaw('GET', $this->objectPath($path), [], $maxBytes);
     }
 
+    /**
+     * @param array<string,mixed> $options
+     * @return array<mixed>
+     */
+    public function list(string $path = '', array $options = []): array
+    {
+        return $this->http->requestJson('POST', '/object/list/' . rawurlencode($this->bucketId), [
+            'body' => ['prefix' => $path] + $options,
+        ]);
+    }
+
+    /**
+     * @param list<string> $paths
+     * @return array<mixed>
+     */
+    public function remove(array $paths): array
+    {
+        return $this->http->requestJson('DELETE', '/object/' . rawurlencode($this->bucketId), [
+            'body' => ['prefixes' => $paths],
+        ]);
+    }
+
+    public function move(string $from, string $to): void
+    {
+        $this->http->requestJson('POST', '/object/move', [
+            'body' => ['bucketId' => $this->bucketId, 'sourceKey' => $from, 'destinationKey' => $to],
+        ]);
+    }
+
+    public function copy(string $from, string $to): void
+    {
+        $this->http->requestJson('POST', '/object/copy', [
+            'body' => ['bucketId' => $this->bucketId, 'sourceKey' => $from, 'destinationKey' => $to],
+        ]);
+    }
+
     private function objectPath(string $path): string
     {
         return '/object/' . rawurlencode($this->bucketId) . '/' . $this->encodePath($path);
