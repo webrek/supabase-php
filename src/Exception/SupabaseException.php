@@ -32,9 +32,12 @@ class SupabaseException extends RuntimeException
     }
 
     /**
-     * Returns the raw HTTP response body captured when this exception was created.
+     * Returns the HTTP response body captured when this exception was created.
      *
-     * WARNING: The body may contain sensitive data (e.g. tokens, credentials, or
+     * Subclasses may redact parts of the body (e.g. AuthException scrubs token
+     * fields), so this is not always the verbatim server response.
+     *
+     * WARNING: The body may still contain sensitive data (e.g. credentials or
      * personally identifiable information returned by Auth or Storage responses).
      * Do NOT log or expose this value verbatim in error tracking systems or
      * server-side logs without first scrubbing its contents.

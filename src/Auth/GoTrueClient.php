@@ -15,12 +15,6 @@ final class GoTrueClient
         $this->http = new AuthHttp($transport);
     }
 
-    /** Returns the base URL (used for OAuth sign-in URL construction). */
-    public function getBaseUrl(): string
-    {
-        return $this->baseUrl;
-    }
-
     /**
      * @param array<string,mixed> $options
      */

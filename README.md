@@ -123,8 +123,9 @@ $url = $supabase->auth()->getOAuthSignInUrl('github', ['redirect_to' => 'https:/
 ```
 
 Sessions are stateless: the SDK never stores or refreshes them automatically — persist
-`accessToken`/`refreshToken` yourself. Tokens are redacted in `var_dump`/`print_r` and in
-`AuthException` bodies, and `Session` cannot be serialized.
+`accessToken`/`refreshToken` yourself. Tokens are redacted in `var_dump`/`print_r`/`json_encode`
+and in `AuthException` bodies, and `Session` cannot be serialized. (PHP's `var_export()` cannot
+be intercepted — never `var_export()` a `Session`.)
 
 ## Injecting your own HTTP client
 
