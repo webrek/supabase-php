@@ -4,8 +4,7 @@ Framework-agnostic PHP client for [Supabase](https://supabase.com). PHP 8.3+.
 
 ## Status
 
-**Available:** Auth (user flows & admin), Edge Functions, Database (PostgREST), Storage
-**Planned:** Realtime
+**Status:** Available: Auth (user flows & admin), Edge Functions, Database (PostgREST), Storage, Realtime (postgres changes & broadcast).
 
 ## Installation
 
@@ -121,6 +120,102 @@ $public = $files->from('avatars')->getPublicUrl('me.png');        // for public 
 `upload()` accepts a string or a PSR-7 `StreamInterface`. Storage uses the key the client was
 built with (anon respects Storage RLS policies; service_role bypasses them). `download()` caps at
 50 MiB by default — raise the `maxBytes` argument or use a signed URL for larger files.
+
+## Realtime
+
+Subscribe to Postgres changes and exchange broadcast messages over a persistent
+WebSocket connection. Realtime is connection-oriented and meant for long-lived
+CLI / worker processes, not a typical web request.
+
+Because there is no PSR standard for WebSockets, this library does **not** bundle
+a WebSocket client. You provide a connection by implementing
+`Supabase\Realtime\WebSocketConnection` (the SDK implements the Phoenix channels
+protocol on top of it) and wiring a factory through `ClientOptions`:
+
+```php
+use Supabase\Client;
+use Supabase\ClientOptions;
+use Supabase\Realtime\WebSocketConnection;
+use Supabase\Realtime\WebSocketConnectionFactory;
+
+$client = new Client('https://YOUR-PROJECT.supabase.co', 'YOUR-ANON-KEY', new ClientOptions(
+    webSocketFactory: new MyWebSocketConnectionFactory(),
+));
+
+$realtime = $client->realtime();
+
+$realtime->channel('room-1')
+    ->onPostgresChanges('*', 'public', 'messages', null, function (array $change): void {
+        // $change['eventType'], $change['new'], $change['old']
+    })
+    ->onBroadcast('cursor', function (array $message): void {
+        // $message['payload']
+    })
+    ->subscribe();
+
+$realtime->connect();
+$realtime->channel('room-1')->send('cursor', ['x' => 10, 'y' => 20]); // broadcast
+$realtime->run(30.0); // blocking loop: dispatches messages and sends heartbeats for 30s
+$realtime->disconnect();
+```
+
+Prefer your own loop? Call `poll(float $timeout)` repeatedly instead of `run()`,
+and `stop()` to break out of `run()` from inside a callback.
+
+### Implementing `WebSocketConnection`
+
+`WebSocketConnection` is a small contract you back with any WebSocket client.
+The URL passed to `connect()` already contains the `apikey` query parameter, so
+never log it verbatim.
+
+```php
+use Supabase\Realtime\WebSocketConnection;
+use Supabase\Realtime\WebSocketConnectionFactory;
+
+final class MyWebSocketConnection implements WebSocketConnection
+{
+    private $client; // your WebSocket client of choice
+
+    public function connect(string $url, array $headers = []): void
+    {
+        // open the connection to $url with $headers
+    }
+
+    public function send(string $data): void
+    {
+        // send a text frame
+    }
+
+    public function receive(float $timeoutSeconds): ?string
+    {
+        // return the next text frame, or null if $timeoutSeconds elapsed
+    }
+
+    public function close(int $code = 1000, string $reason = ''): void
+    {
+        // close the connection
+    }
+
+    public function isConnected(): bool
+    {
+        // report connection state
+    }
+}
+
+final class MyWebSocketConnectionFactory implements WebSocketConnectionFactory
+{
+    public function create(): WebSocketConnection
+    {
+        return new MyWebSocketConnection();
+    }
+}
+```
+
+Calling `realtime()` without configuring a `webSocketFactory` throws a
+`Supabase\Exception\RealtimeException`.
+
+> Out of scope for this release: presence, automatic reconnection, and automatic
+> access-token refresh. Recreate the connection on disconnect to reconnect.
 
 ## Auth (GoTrue)
 
