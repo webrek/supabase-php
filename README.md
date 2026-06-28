@@ -83,9 +83,18 @@ $total = $supabase->from('users')->select('*')->eq('active', true)->count();
 
 // RPC (remote procedure call)
 $result = $supabase->rpc('add', ['a' => 1, 'b' => 2])->execute();
+
+// Advanced filters: in(), or(), full-text search, ranges
+$posts = $supabase->from('posts')
+    ->select('id, title')
+    ->in('status', ['published', 'featured'])
+    ->or('author_id.eq.1,author_id.eq.2')
+    ->textSearch('body', 'php & sdk')
+    ->range(0, 19)
+    ->execute();
 ```
 
-The Database module supports filtering operators (eq, neq, gt, gte, lt, lte, like, ilike, is, in, contains, containedBy, overlaps, textSearch), modifiers (order, limit, range, single, maybeSingle), and error handling via `PostgrestException`.
+The Database module supports the full set of PostgREST filtering operators — `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`, `ilike`, `is`, `in`, `contains`, `containedBy`, `rangeGt`, `rangeGte`, `rangeLt`, `rangeLte`, `rangeAdjacent`, `overlaps`, `textSearch`, `not`, `or`, `match`, and `filter` (escape hatch) — plus modifiers (`order`, `limit`, `range`, `single`, `maybeSingle`), `count()`, and error handling via `PostgrestException`.
 
 ## Injecting your own HTTP client
 
