@@ -20,6 +20,33 @@ final class QueryBuilder
         return $this->builder('GET')->select($columns);
     }
 
+    /** @param array<string,mixed>|list<array<string,mixed>> $values */
+    public function insert(array $values): FilterBuilder
+    {
+        return $this->builder('POST', $values);
+    }
+
+    /**
+     * @param array<string,mixed>|list<array<string,mixed>> $values
+     */
+    public function upsert(array $values, ?string $onConflict = null): FilterBuilder
+    {
+        $builder = $this->builder('POST', $values);
+        $builder->upsertPrefer($onConflict);
+        return $builder;
+    }
+
+    /** @param array<string,mixed> $values */
+    public function update(array $values): FilterBuilder
+    {
+        return $this->builder('PATCH', $values);
+    }
+
+    public function delete(): FilterBuilder
+    {
+        return $this->builder('DELETE');
+    }
+
     /**
      * @param array<mixed>|null $body
      */

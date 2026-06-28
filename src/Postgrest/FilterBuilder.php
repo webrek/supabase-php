@@ -33,16 +33,38 @@ class FilterBuilder
             $header = in_array($this->method, ['GET', 'HEAD'], true) ? 'Accept-Profile' : 'Content-Profile';
             $this->headers[$header] = $this->schema;
         }
+
+        if (! in_array($this->method, ['GET', 'HEAD'], true)) {
+            $this->mergePrefer('return=minimal');
+        }
     }
 
     public function select(string $columns = '*'): static
     {
         $this->addParam('select', $columns);
         if (! in_array($this->method, ['GET', 'HEAD'], true)) {
-            $this->mergePrefer('return=representation');
+            $this->setReturnPreference('representation');
         }
 
         return $this;
+    }
+
+    private function setReturnPreference(string $value): void
+    {
+        $prefs = array_filter(
+            explode(',', $this->headers['Prefer'] ?? ''),
+            static fn (string $p) => $p !== '' && ! str_starts_with($p, 'return='),
+        );
+        $prefs[] = 'return=' . $value;
+        $this->headers['Prefer'] = implode(',', $prefs);
+    }
+
+    public function upsertPrefer(?string $onConflict): void
+    {
+        $this->mergePrefer('resolution=merge-duplicates');
+        if ($onConflict !== null) {
+            $this->addParam('on_conflict', $onConflict);
+        }
     }
 
     public function eq(string $column, mixed $value): static
