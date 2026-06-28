@@ -69,6 +69,14 @@ final class RealtimeClient
             return;
         }
 
+        if ($this->conn !== null) {
+            try {
+                $this->conn->close();
+            } catch (\Throwable) {
+                // best-effort close of a stale connection
+            }
+        }
+
         $conn = $this->factory->create();
         try {
             $conn->connect($this->buildUrl(), ['apikey' => $this->apiKey]);
@@ -101,13 +109,13 @@ final class RealtimeClient
         $this->requireConn();
         $this->running = true;
         $start = $this->now();
+        $pollTimeout = min(1.0, $maxSeconds ?? 1.0);
 
         while ($this->running) {
-            $this->poll(1.0);
-
             if (!($this->conn?->isConnected() ?? false)) {
                 break;
             }
+            $this->poll($pollTimeout);
             if ($maxSeconds !== null && ($this->now() - $start) >= $maxSeconds) {
                 break;
             }
@@ -192,7 +200,7 @@ final class RealtimeClient
 
     private function requireConn(): WebSocketConnection
     {
-        if ($this->conn === null) {
+        if ($this->conn === null || !$this->conn->isConnected()) {
             throw new RealtimeException('Realtime is not connected. Call connect() first.');
         }
 
