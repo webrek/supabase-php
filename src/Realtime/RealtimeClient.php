@@ -6,6 +6,7 @@ namespace Supabase\Realtime;
 
 use Supabase\Exception\RealtimeException;
 use Supabase\Exception\SupabaseException;
+use Supabase\Http\HeaderRedaction;
 
 /**
  * Realtime client over the Phoenix channels protocol. Owns the WebSocket
@@ -140,6 +141,36 @@ final class RealtimeClient
             $this->conn = null;
         }
         $this->running = false;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array
+    {
+        return [
+            'url' => $this->url,
+            'apiKey' => HeaderRedaction::REDACTED,
+            'connected' => $this->conn?->isConnected() ?? false,
+            'channels' => array_keys($this->channels),
+            'heartbeatInterval' => $this->heartbeatInterval,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function __serialize(): array
+    {
+        throw new \LogicException('RealtimeClient must not be serialized; it holds credentials and a live connection.');
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function __unserialize(array $data): void
+    {
+        throw new \LogicException('RealtimeClient must not be unserialized; it holds credentials and a live connection.');
     }
 
     public function buildUrl(): string

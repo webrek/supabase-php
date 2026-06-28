@@ -100,7 +100,7 @@ final class Channel
         $payload = [
             'config' => [
                 'broadcast' => ['ack' => false, 'self' => false],
-                'presence' => ['key' => ''],
+                'presence' => ['key' => '', 'enabled' => false],
                 'postgres_changes' => $pg,
                 'private' => false,
             ],
@@ -188,7 +188,7 @@ final class Channel
             }
         }
 
-        $data = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : $payload;
+        $data = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : [];
 
         foreach ($this->postgresBindings as $index => $binding) {
             $bindingId = $this->postgresIds[$index] ?? null;

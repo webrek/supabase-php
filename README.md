@@ -144,6 +144,8 @@ $client = new Client('https://YOUR-PROJECT.supabase.co', 'YOUR-ANON-KEY', new Cl
 
 $realtime = $client->realtime();
 
+$realtime->connect();
+
 $realtime->channel('room-1')
     ->onPostgresChanges('*', 'public', 'messages', null, function (array $change): void {
         // $change['eventType'], $change['new'], $change['old']
@@ -152,8 +154,6 @@ $realtime->channel('room-1')
         // $message['payload']
     })
     ->subscribe();
-
-$realtime->connect();
 $realtime->channel('room-1')->send('cursor', ['x' => 10, 'y' => 20]); // broadcast
 $realtime->run(30.0); // blocking loop: dispatches messages and sends heartbeats for 30s
 $realtime->disconnect();

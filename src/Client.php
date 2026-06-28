@@ -9,6 +9,7 @@ use Http\Discovery\Psr18ClientDiscovery;
 use Supabase\Auth\GoTrueClient;
 use Supabase\Exception\RealtimeException;
 use Supabase\Functions\FunctionsClient;
+use Supabase\Http\HeaderRedaction;
 use Supabase\Http\Transport;
 use Supabase\Postgrest\FilterBuilder;
 use Supabase\Postgrest\PostgrestClient;
@@ -97,6 +98,20 @@ final class Client
     public function auth(): GoTrueClient
     {
         return $this->auth ??= new GoTrueClient($this->transport, $this->url);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function __debugInfo(): array
+    {
+        return [
+            'url' => $this->url,
+            'schema' => $this->schema,
+            'apiKey' => HeaderRedaction::REDACTED,
+            'transport' => $this->transport,
+            'webSocketFactory' => $this->webSocketFactory,
+        ];
     }
 
     /**

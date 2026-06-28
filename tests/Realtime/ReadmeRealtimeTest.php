@@ -12,5 +12,6 @@ test('README documents Realtime and the WebSocketConnection adapter', function (
         ->and($readme)->toContain('WebSocketConnection')
         ->and($readme)->toContain('webSocketFactory')
         ->and($readme)->toContain('onPostgresChanges')
-        ->and($readme)->not->toContain('Planned: Realtime'); // Status updated
+        ->and($readme)->not->toContain('**Planned:**')
+        ->and($readme)->toContain('Realtime (postgres changes & broadcast)');
 });
