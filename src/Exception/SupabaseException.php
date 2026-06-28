@@ -89,6 +89,19 @@ class SupabaseException extends RuntimeException
      */
     protected static function create(string $class, string $message, ?int $statusCode, ?string $errorCode, ?string $responseBody): SupabaseException
     {
-        return new $class($message, $statusCode, $errorCode, $responseBody);
+        $redactedBody = $responseBody !== null ? static::redactResponseBody($responseBody) : null;
+        return new $class($message, $statusCode, $errorCode, $redactedBody);
+    }
+
+    /**
+     * Hook for subclasses to redact sensitive data from response bodies.
+     * Override this method in subclasses that need to redact specific fields.
+     *
+     * @param string $body The raw response body.
+     * @return string The redacted response body (default: unchanged).
+     */
+    protected static function redactResponseBody(string $body): string
+    {
+        return $body;
     }
 }
