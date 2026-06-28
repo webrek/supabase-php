@@ -50,6 +50,16 @@ final class Transport
     }
 
     /**
+     * Prevents reconstruction of a credential-holding object from untrusted data.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function __unserialize(array $data): void
+    {
+        throw new \LogicException('Transport must not be unserialized; it holds credentials.');
+    }
+
+    /**
      * @param array{headers?: array<string,string>, query?: array<string,scalar>, body?: array<mixed>|string} $options
      */
     public function request(string $method, string $path, array $options = []): ResponseInterface

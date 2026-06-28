@@ -119,6 +119,32 @@ test('throws InvalidArgumentException when url contains userinfo', function () {
         ->toThrow(\InvalidArgumentException::class);
 });
 
+test('url-validation errors do not leak embedded credentials', function () {
+    $caught = null;
+    try {
+        new Client('https://user:p4ssw0rd@host', 'k');
+    } catch (\Throwable $e) {
+        $caught = $e;
+    }
+
+    expect($caught)->not->toBeNull();
+    assert($caught instanceof \Throwable);
+    expect($caught->getMessage())->not->toContain('p4ssw0rd');
+});
+
+test('non-https url still throws InvalidArgumentException without echoing the url', function () {
+    $caught = null;
+    try {
+        new Client('http://example.com/leaky-path', 'k');
+    } catch (\Throwable $e) {
+        $caught = $e;
+    }
+
+    expect($caught)->toBeInstanceOf(\InvalidArgumentException::class);
+    assert($caught instanceof \Throwable);
+    expect($caught->getMessage())->not->toContain('leaky-path');
+});
+
 test('the api key is redacted from exception stack traces', function () {
     $caught = null;
     try {
@@ -161,5 +187,21 @@ test('ClientOptions __debugInfo redacts the access token and sensitive headers',
 
 test('ClientOptions must not be serialized', function () {
     expect(fn () => serialize(new ClientOptions(accessToken: 'x')))
+        ->toThrow(\LogicException::class);
+});
+
+test('Client must not be unserialized', function () {
+    $factory = new Psr17Factory();
+    $sb = new Client('https://demo.supabase.co', 'ANON', new ClientOptions(
+        httpClient: new MockClient(),
+        requestFactory: $factory,
+        streamFactory: $factory,
+    ));
+
+    expect(fn () => $sb->__unserialize([]))->toThrow(\LogicException::class);
+});
+
+test('ClientOptions must not be unserialized', function () {
+    expect(fn () => (new ClientOptions())->__unserialize([]))
         ->toThrow(\LogicException::class);
 });

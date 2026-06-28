@@ -167,3 +167,10 @@ test('Transport must not be serialized', function () {
     expect(fn () => serialize($transport))
         ->toThrow(\LogicException::class);
 });
+
+test('Transport must not be unserialized', function () {
+    $transport = makeTransport(new MockClient());
+
+    expect(fn () => $transport->__unserialize([]))
+        ->toThrow(\LogicException::class);
+});

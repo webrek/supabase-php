@@ -16,7 +16,7 @@ final class HeaderRedaction
     private const SENSITIVE_NAMES = ['authorization', 'apikey', 'cookie', 'proxy-authorization', 'x-api-key'];
 
     /** @var list<string> */
-    private const SENSITIVE_SUBSTRINGS = ['auth', 'token', 'secret', 'key', 'cookie'];
+    private const SENSITIVE_SUBSTRINGS = ['auth', 'token', 'secret', 'cookie'];
 
     public static function isSensitive(string $name): bool
     {
@@ -34,14 +34,14 @@ final class HeaderRedaction
     }
 
     /**
-     * @param array<string, string> $headers
-     * @return array<string, string>
+     * @param array<array-key, string> $headers
+     * @return array<array-key, string>
      */
     public static function redact(array $headers): array
     {
         $safe = [];
         foreach ($headers as $name => $value) {
-            $safe[$name] = self::isSensitive($name) ? self::REDACTED : $value;
+            $safe[$name] = self::isSensitive((string) $name) ? self::REDACTED : $value;
         }
 
         return $safe;

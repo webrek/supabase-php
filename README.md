@@ -24,6 +24,13 @@ composer require guzzlehttp/guzzle nyholm/psr7
 The client auto-discovers them via `php-http/discovery`. You can also inject your
 own via `ClientOptions`.
 
+For production deployments, install without dev dependencies and with an
+optimized, authoritative classmap:
+
+```bash
+composer install --no-dev --optimize-autoloader --classmap-authoritative
+```
+
 ## Quick start
 
 ```php

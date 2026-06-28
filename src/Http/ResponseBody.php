@@ -23,20 +23,31 @@ final class ResponseBody
      */
     public static function read(StreamInterface $stream, int $maxBytes = self::MAX_BYTES): string
     {
-        if ($stream->isSeekable()) {
-            $stream->rewind();
+        $size = $stream->getSize();
+        if ($size !== null && $size > $maxBytes) {
+            throw new SupabaseException("Response body exceeded {$maxBytes} bytes.");
         }
 
-        $result = '';
-        while (! $stream->eof()) {
-            $chunk = $stream->read(8192);
-            if ($chunk === '') {
-                break;
+        try {
+            if ($stream->isSeekable()) {
+                $stream->rewind();
             }
-            $result .= $chunk;
-            if (strlen($result) > $maxBytes) {
-                throw new SupabaseException("Response body exceeded {$maxBytes} bytes.");
+
+            $result = '';
+            while (! $stream->eof()) {
+                $chunk = $stream->read(8192);
+                if ($chunk === '') {
+                    break;
+                }
+                $result .= $chunk;
+                if (strlen($result) > $maxBytes) {
+                    throw new SupabaseException("Response body exceeded {$maxBytes} bytes.");
+                }
             }
+        } catch (SupabaseException $e) {
+            throw $e;
+        } catch (\RuntimeException $e) {
+            throw new SupabaseException('Failed to read response body: ' . $e->getMessage(), previous: $e);
         }
 
         return $result;

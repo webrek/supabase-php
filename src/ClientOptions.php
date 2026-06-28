@@ -52,4 +52,14 @@ final readonly class ClientOptions
     {
         throw new \LogicException('ClientOptions must not be serialized; it holds credentials.');
     }
+
+    /**
+     * Prevents reconstruction of a credential-holding object from untrusted data.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function __unserialize(array $data): void
+    {
+        throw new \LogicException('ClientOptions must not be unserialized; it holds credentials.');
+    }
 }

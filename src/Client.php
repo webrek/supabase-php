@@ -16,23 +16,30 @@ final class Client
     public function __construct(string $url, #[\SensitiveParameter] string $apiKey, ?ClientOptions $options = null)
     {
         $parsed = parse_url($url);
+        if ($parsed === false) {
+            throw new \InvalidArgumentException('The Supabase URL is malformed.');
+        }
+
         $scheme = isset($parsed['scheme']) ? strtolower($parsed['scheme']) : '';
         $host = $parsed['host'] ?? '';
 
         if (isset($parsed['user']) || isset($parsed['pass'])) {
             throw new \InvalidArgumentException(
-                "The Supabase URL must not contain userinfo (user:password): \"{$url}\"."
+                'The Supabase URL must not contain userinfo (user:password).'
             );
         }
 
-        if ($scheme === 'https' && $host !== '') {
+        if ($host === '') {
+            throw new \InvalidArgumentException('The Supabase URL must include a host.');
+        }
+
+        if ($scheme === 'https') {
             // always allowed
         } elseif ($scheme === 'http' && ($host === 'localhost' || $host === '127.0.0.1')) {
             // local dev exception
         } else {
             throw new \InvalidArgumentException(
-                "The Supabase URL must use HTTPS with a host (got: \"{$url}\"). "
-                . 'HTTP is only permitted for localhost / 127.0.0.1.'
+                'The Supabase URL must use HTTPS. HTTP is only permitted for localhost / 127.0.0.1.'
             );
         }
 
@@ -72,6 +79,16 @@ final class Client
     public function __serialize(): array
     {
         throw new \LogicException('Client must not be serialized; it holds credentials.');
+    }
+
+    /**
+     * Prevents reconstruction of a credential-holding object from untrusted data.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function __unserialize(array $data): void
+    {
+        throw new \LogicException('Client must not be unserialized; it holds credentials.');
     }
 
     private ?FunctionsClient $functions = null;

@@ -7,6 +7,7 @@ namespace Supabase\Tests\Http;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Supabase\Exception\SupabaseException;
 use Supabase\Http\ResponseBody;
+use Supabase\Tests\Support\FakeStream;
 
 test('read returns the full content when within the limit', function () {
     $stream = (new Psr17Factory())->createStream('hello world');
@@ -36,4 +37,20 @@ test('read throws SupabaseException when the body exceeds maxBytes', function ()
 
 test('MAX_BYTES is 10 MiB', function () {
     expect(ResponseBody::MAX_BYTES)->toBe(10_485_760);
+});
+
+test('read wraps a mid-body RuntimeException in a SupabaseException', function () {
+    $stream = new FakeStream('', null, throwOnRead: true);
+
+    expect(fn () => ResponseBody::read($stream))
+        ->toThrow(SupabaseException::class, 'Failed to read response body');
+});
+
+test('read rejects via getSize before reading any bytes', function () {
+    $stream = new FakeStream('small', size: 11);
+
+    expect(fn () => ResponseBody::read($stream, maxBytes: 10))
+        ->toThrow(SupabaseException::class);
+
+    expect($stream->readCalls)->toBe(0);
 });
