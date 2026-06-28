@@ -44,3 +44,30 @@ test('requestJson returns [] for an empty body', function () {
     $client->queue(new Response(200, [], ''));
     expect(storageHttp($client)->requestJson('DELETE', '/bucket/x'))->toBe([]);
 });
+
+test('requestRaw returns the raw body bytes', function () {
+    $client = new MockClient();
+    $client->queue(new Response(200, ['Content-Type' => 'image/png'], 'RAWBYTES'));
+
+    $bytes = storageHttp($client)->requestRaw('GET', '/object/b/a.png');
+
+    \assert($client->lastRequest !== null);
+    expect((string) $client->lastRequest->getUri())->toBe('https://demo.supabase.co/storage/v1/object/b/a.png')
+        ->and($bytes)->toBe('RAWBYTES');
+});
+
+test('requestRaw throws StorageException on a non-2xx response', function () {
+    $client = new MockClient();
+    $client->queue(new Response(404, ['Content-Type' => 'application/json'], '{"error":"not_found"}'));
+
+    expect(fn () => storageHttp($client)->requestRaw('GET', '/object/b/missing.png'))
+        ->toThrow(\Supabase\Exception\StorageException::class);
+});
+
+test('requestRaw enforces the maxBytes cap', function () {
+    $client = new MockClient();
+    $client->queue(new Response(200, [], 'abcdefghij')); // 10 bytes
+
+    expect(fn () => storageHttp($client)->requestRaw('GET', '/object/b/big', [], 5))
+        ->toThrow(\Supabase\Exception\SupabaseException::class);
+});

@@ -37,6 +37,20 @@ final class StorageHttp
         return is_array($decoded) ? $decoded : [];
     }
 
+    /**
+     * @param array{body?: array<mixed>|string|\Psr\Http\Message\StreamInterface, headers?: array<string,string>, query?: array<string,scalar>|list<array{0:string,1:string}>} $options
+     */
+    public function requestRaw(string $method, string $path, array $options = [], int $maxBytes = 52_428_800): string
+    {
+        $response = $this->transport->request($method, '/storage/v1' . $path, $options);
+
+        if ($response->getStatusCode() >= 400) {
+            throw StorageException::fromResponse($response);
+        }
+
+        return ResponseBody::read($response->getBody(), $maxBytes);
+    }
+
     public function __serialize(): array
     {
         throw new \LogicException('StorageHttp must not be serialized; it holds a credentialed transport.');
