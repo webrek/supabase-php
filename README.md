@@ -4,8 +4,9 @@ Framework-agnostic PHP client for [Supabase](https://supabase.com). PHP 8.3+.
 
 ## Status
 
-**Available:** Edge Functions, Database (PostgREST)
-**Planned:** Auth, Storage, Realtime
+**Available:** Auth (user flows), Edge Functions, Database (PostgREST)
+**Planned:** Storage, Realtime
+Note: Auth Admin API coming in a follow-up.
 
 ## Installation
 
@@ -96,6 +97,35 @@ $posts = $supabase->from('posts')
 
 The Database module supports the full set of PostgREST filtering operators — `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `like`, `ilike`, `is`, `in`, `contains`, `containedBy`, `rangeGt`, `rangeGte`, `rangeLt`, `rangeLte`, `rangeAdjacent`, `overlaps`, `textSearch`, `not`, `or`, `match`, and `filter` (escape hatch) — plus modifiers (`order`, `limit`, `range`, `single`, `maybeSingle`), `count()`, and error handling via `PostgrestException`.
 
+## Auth (GoTrue)
+
+```php
+// Sign up (returns null if the project requires email confirmation)
+$session = $supabase->auth()->signUp('a@b.com', 'password');
+
+// Sign in
+$session = $supabase->auth()->signInWithPassword('a@b.com', 'password');
+$session->accessToken;   // string (redacted in dumps; never logged)
+$session->user->id;      // string
+
+// Get / update the user behind a JWT
+$user = $supabase->auth()->getUser($session->accessToken);
+$user = $supabase->auth()->updateUser($session->accessToken, ['data' => ['name' => 'Ada']]);
+
+// Refresh and sign out
+$session = $supabase->auth()->refreshSession($session->refreshToken);
+$supabase->auth()->signOut($session->accessToken);
+
+// OTP, password reset, OAuth URL
+$supabase->auth()->signInWithOtp(['email' => 'a@b.com']);
+$supabase->auth()->resetPasswordForEmail('a@b.com');
+$url = $supabase->auth()->getOAuthSignInUrl('github', ['redirect_to' => 'https://app.test/cb']);
+```
+
+Sessions are stateless: the SDK never stores or refreshes them automatically — persist
+`accessToken`/`refreshToken` yourself. Tokens are redacted in `var_dump`/`print_r` and in
+`AuthException` bodies, and `Session` cannot be serialized.
+
 ## Injecting your own HTTP client
 
 ```php
@@ -124,12 +154,6 @@ try {
     $e->getResponseBody(); // raw response body
 }
 ```
-
-## Sessions (design principle)
-
-This SDK is stateless: it will never store or refresh sessions internally.
-When Auth lands, it will return `Session`/`User` objects; persisting them will be
-the caller's responsibility.
 
 ## Security
 
