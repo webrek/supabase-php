@@ -9,6 +9,31 @@ backward-compatible features and patch releases contain fixes.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-28
+
+### Security
+- Exception response-body redaction is now **fail-safe across all exception
+  types**: a baseline set of credential fields (`apikey`, `access_token`,
+  `refresh_token`, `token`, `password`, `secret`) is redacted by default, so
+  even `PostgrestException` and `FunctionsException` no longer expose common
+  credentials in `getResponseBody()`. Each subclass adds its own extra fields on
+  top (Auth and Storage keep their existing keys).
+- `ClientOptions` now implements `JsonSerializable`, so `json_encode()` no longer
+  exposes the raw access token.
+
+### Added
+- Configurable Realtime heartbeat interval via
+  `ClientOptions(realtimeHeartbeatInterval: ...)`.
+
+### Changed
+- `AuthHttp` and `StorageHttp` now throw a typed exception when a successful
+  (2xx) response body is malformed JSON, instead of silently returning `[]`.
+- `StorageHttp` gained a `__debugInfo()` for parity with the other HTTP helpers.
+
+### Fixed
+- `FileApi::createSignedUrl()` now throws `StorageException` when the response
+  lacks the expected `signedURL` field, instead of returning a wrong base-only URL.
+
 ## [0.5.0] - 2026-06-28
 
 ### Added
@@ -62,7 +87,8 @@ backward-compatible features and patch releases contain fixes.
   and a typed `Supabase\Exception\*` hierarchy.
 - **Edge Functions** module. `Client::functions()` → `FunctionsClient::invoke()`.
 
-[Unreleased]: https://github.com/webrek/supabase-php/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/webrek/supabase-php/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/webrek/supabase-php/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/webrek/supabase-php/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/webrek/supabase-php/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/webrek/supabase-php/compare/v0.2.0...v0.3.0
