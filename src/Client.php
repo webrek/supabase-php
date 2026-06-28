@@ -6,6 +6,7 @@ namespace Supabase;
 
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
+use Supabase\Auth\GoTrueClient;
 use Supabase\Functions\FunctionsClient;
 use Supabase\Http\Transport;
 use Supabase\Postgrest\FilterBuilder;
@@ -17,6 +18,8 @@ final class Client
     private readonly Transport $transport;
 
     private readonly string $schema;
+
+    private readonly string $url;
 
     public function __construct(string $url, #[\SensitiveParameter] string $apiKey, ?ClientOptions $options = null)
     {
@@ -50,6 +53,7 @@ final class Client
 
         $options ??= new ClientOptions();
 
+        $this->url = $url;
         $this->schema = $options->schema;
 
         $httpClient = $options->httpClient ?? Psr18ClientDiscovery::find();
@@ -76,6 +80,13 @@ final class Client
     public function getTransport(): Transport
     {
         return $this->transport;
+    }
+
+    private ?GoTrueClient $auth = null;
+
+    public function auth(): GoTrueClient
+    {
+        return $this->auth ??= new GoTrueClient($this->transport, $this->url);
     }
 
     /**

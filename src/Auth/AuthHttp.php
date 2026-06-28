@@ -16,7 +16,7 @@ final class AuthHttp
 
     /**
      * @param array{body?: array<mixed>|string, headers?: array<string,string>, query?: array<string,scalar>|list<array{0:string,1:string}>} $options
-     * @return array<mixed>
+     * @return array<string, mixed>
      */
     public function request(string $method, string $path, array $options = []): array
     {
@@ -31,7 +31,7 @@ final class AuthHttp
             return [];
         }
 
-        /** @var array<mixed>|null $decoded */
+        /** @var array<string, mixed>|null $decoded */
         $decoded = json_decode($body, true);
 
         return is_array($decoded) ? $decoded : [];
