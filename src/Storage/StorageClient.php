@@ -78,6 +78,11 @@ final class StorageClient
         $this->http->requestJson('POST', '/bucket/' . rawurlencode($id) . '/empty');
     }
 
+    public function from(string $bucketId): FileApi
+    {
+        return new FileApi($this->http, $bucketId, $this->baseUrl);
+    }
+
     /**
      * Coerces an array with mixed keys to string keys, as JSON object keys are always strings.
      *
