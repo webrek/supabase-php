@@ -62,7 +62,7 @@ can still expose raw values.
 ### `SupabaseException::getResponseBody()` may contain sensitive data
 
 The raw response body returned by `getResponseBody()` can include tokens, error
-details, or PII (especially in future Auth and Storage responses). Do not log or
+details, or PII (from Database, Auth, Storage, or other responses). Do not log or
 expose it verbatim; extract only the fields you need.
 
 ### Prefer injecting an explicit, hardened PSR-18 client in production

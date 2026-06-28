@@ -4,9 +4,8 @@ Framework-agnostic PHP client for [Supabase](https://supabase.com). PHP 8.3+.
 
 ## Status
 
-**Only Edge Functions is available in the current release.**
-Database (PostgREST), Auth, and Storage are planned and will be added in future
-milestones.
+**Available:** Edge Functions, Database (PostgREST)
+**Planned:** Auth, Storage, Realtime
 
 ## Installation
 
@@ -46,6 +45,43 @@ $result = $supabase->functions()->invoke('hello', [
     'body' => ['name' => 'world'],
 ]);
 ```
+
+## Database (PostgREST)
+
+```php
+// Select with filters and ordering
+$rows = $supabase->from('users')
+    ->select('id, email')
+    ->eq('active', true)
+    ->order('created_at', ascending: false)
+    ->limit(10)
+    ->execute();
+
+// Select a single row
+$user = $supabase->from('users')->select('*')->eq('id', 1)->single()->execute();
+
+// Insert (returns rows when you chain ->select())
+$created = $supabase->from('users')->insert(['email' => 'a@b.com'])->select()->execute();
+
+// Update
+$supabase->from('users')->update(['active' => false])->eq('id', 5)->execute();
+
+// Delete
+$supabase->from('users')->delete()->eq('id', 5)->execute();
+
+// Upsert
+$supabase->from('users')
+    ->upsert(['id' => 1, 'email' => 'updated@b.com'])
+    ->execute();
+
+// Count rows
+$total = $supabase->from('users')->select('*')->eq('active', true)->count();
+
+// RPC (remote procedure call)
+$result = $supabase->rpc('add', ['a' => 1, 'b' => 2])->execute();
+```
+
+The Database module supports filtering operators (eq, neq, gt, gte, lt, lte, like, ilike, is, in, contains, containedBy, overlaps, textSearch), modifiers (order, limit, range, single, maybeSingle), and error handling via `PostgrestException`.
 
 ## Injecting your own HTTP client
 
