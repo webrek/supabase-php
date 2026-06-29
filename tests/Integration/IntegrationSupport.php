@@ -8,6 +8,7 @@ use GuzzleHttp\Client as GuzzleClient;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Supabase\Client;
 use Supabase\ClientOptions;
+use Supabase\Realtime\PhrityWebSocketConnectionFactory;
 
 /**
  * Shared helpers for integration tests.
@@ -61,6 +62,28 @@ final class IntegrationSupport
             httpClient: new GuzzleClient(['allow_redirects' => false, 'timeout' => 10.0]),
             requestFactory: $factory,
             streamFactory: $factory,
+        ));
+    }
+
+    /**
+     * Returns a Client with the service-role key and a real WebSocket transport
+     * (the phrity/websocket reference adapter) for Realtime integration tests.
+     */
+    public static function realtimeClient(): Client
+    {
+        $url = getenv('SUPABASE_URL');
+        $key = getenv('SUPABASE_SERVICE_ROLE_KEY');
+
+        assert(is_string($url) && $url !== '', 'SUPABASE_URL env var must be set');
+        assert(is_string($key) && $key !== '', 'SUPABASE_SERVICE_ROLE_KEY env var must be set');
+
+        $factory = new Psr17Factory();
+
+        return new Client($url, $key, new ClientOptions(
+            httpClient: new GuzzleClient(['allow_redirects' => false, 'timeout' => 10.0]),
+            requestFactory: $factory,
+            streamFactory: $factory,
+            webSocketFactory: new PhrityWebSocketConnectionFactory(),
         ));
     }
 
