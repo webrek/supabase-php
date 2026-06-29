@@ -64,12 +64,13 @@ test('poll routes an incoming postgres_changes frame to the channel callback', f
 
     // Server confirms the subscription and assigns id 5, then sends a change.
     $conn->queue('{"topic":"realtime:room1","event":"phx_reply","payload":{"status":"ok","response":{"postgres_changes":[{"id":5}]}},"ref":"2","join_ref":"1"}');
-    $conn->queue('{"topic":"realtime:room1","event":"postgres_changes","payload":{"ids":[5],"data":{"new":{"id":9}}}}');
+    $conn->queue('{"topic":"realtime:room1","event":"postgres_changes","payload":{"ids":[5],"data":{"type":"INSERT","record":{"id":9}}}}');
 
     $rt->poll(); // reply
     $rt->poll(); // change
 
     expect($received)->toHaveCount(1)
+        ->and($received[0]['eventType'])->toBe('INSERT')
         ->and($received[0]['new'])->toBe(['id' => 9]);
 });
 
@@ -128,7 +129,7 @@ test('stop() breaks the run loop when called from a channel callback', function 
 
     // Server confirms the subscription with id 5, then sends a change that triggers the callback.
     $conn->queue('{"topic":"realtime:room1","event":"phx_reply","payload":{"status":"ok","response":{"postgres_changes":[{"id":5}]}},"ref":"2","join_ref":"1"}');
-    $conn->queue('{"topic":"realtime:room1","event":"postgres_changes","payload":{"ids":[5],"data":{"new":{"id":1}}}}');
+    $conn->queue('{"topic":"realtime:room1","event":"postgres_changes","payload":{"ids":[5],"data":{"type":"INSERT","record":{"id":1}}}}');
 
     $rt->run(5.0); // callback calls stop(); must return well before the 5s budget
 

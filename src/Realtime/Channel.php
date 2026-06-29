@@ -189,13 +189,35 @@ final class Channel
         }
 
         $data = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : [];
+        $change = $this->normalizeChange($data);
 
         foreach ($this->postgresBindings as $index => $binding) {
             $bindingId = $this->postgresIds[$index] ?? null;
             if ($bindingId !== null && in_array($bindingId, $ids, true)) {
-                ($binding['callback'])($data);
+                ($binding['callback'])($change);
             }
         }
+    }
+
+    /**
+     * Normalizes the raw Phoenix postgres_changes record into the same shape the
+     * official realtime-js client exposes: the wire payload uses `record` /
+     * `old_record` / `type`, which this maps to `new` / `old` / `eventType`.
+     *
+     * @param array<mixed> $data
+     * @return array{schema: mixed, table: mixed, commit_timestamp: mixed, eventType: string, new: array<mixed>, old: array<mixed>, errors: mixed}
+     */
+    private function normalizeChange(array $data): array
+    {
+        return [
+            'schema' => $data['schema'] ?? null,
+            'table' => $data['table'] ?? null,
+            'commit_timestamp' => $data['commit_timestamp'] ?? null,
+            'eventType' => isset($data['type']) && is_string($data['type']) ? $data['type'] : '',
+            'new' => isset($data['record']) && is_array($data['record']) ? $data['record'] : [],
+            'old' => isset($data['old_record']) && is_array($data['old_record']) ? $data['old_record'] : [],
+            'errors' => $data['errors'] ?? null,
+        ];
     }
 
     /**

@@ -19,6 +19,13 @@ backward-compatible features and patch releases contain fixes.
   is listed under `suggest` in `composer.json` so it is not imposed on consumers
   who bring their own transport.
 
+### Fixed
+- **Realtime**: `onPostgresChanges` callbacks now receive the change in the same
+  shape as the official `realtime-js` client — `eventType`, `new`, `old` (plus
+  `schema`, `table`, `commit_timestamp`, `errors`) — instead of the raw Phoenix
+  wire payload (`type`, `record`, `old_record`). This matches the documented
+  README usage. Verified end-to-end against a real Supabase stack.
+
 ## [0.5.1] - 2026-06-28
 
 ### Security

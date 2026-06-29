@@ -66,14 +66,18 @@ test('phx_reply ok maps server ids and enters joined; status callback fires', fu
     expect($ch->state())->toBe('joined')
         ->and($status)->toBe(['subscribed']);
 
-    // A change carrying id 42 reaches the matching binding's callback.
+    // A change carrying id 42 reaches the matching binding's callback. The raw
+    // Phoenix payload uses record/old_record/type; the callback receives the
+    // realtime-js-style new/old/eventType shape.
     $ch->handleMessage('postgres_changes', [
         'ids' => [42],
-        'data' => ['table' => 'messages', 'eventType' => 'INSERT', 'new' => ['id' => 7]],
+        'data' => ['schema' => 'public', 'table' => 'messages', 'type' => 'INSERT', 'record' => ['id' => 7], 'old_record' => []],
     ], null);
 
     expect($received)->toHaveCount(1)
-        ->and($received[0]['new'])->toBe(['id' => 7]);
+        ->and($received[0]['eventType'])->toBe('INSERT')
+        ->and($received[0]['new'])->toBe(['id' => 7])
+        ->and($received[0]['old'])->toBe([]);
 });
 
 test('postgres_changes with a non-matching id does not invoke the callback', function () {
