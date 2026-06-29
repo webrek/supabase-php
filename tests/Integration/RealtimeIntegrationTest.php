@@ -33,14 +33,21 @@ test('Realtime: postgres_changes delivers an INSERT over a real WebSocket connec
     }
     expect($channel->state())->toBe('joined');
 
-    // Trigger a change via PostgREST.
-    $name = 'rt-' . uniqid();
-    $db->from('integration_items')->insert(['name' => $name])->execute();
-
-    // Pump the loop until the change arrives (or time out).
-    $deadline = microtime(true) + 15.0;
+    // Realtime does not replay past changes and the replication subscription
+    // becomes active a moment AFTER the join reply, so a single early INSERT can
+    // be missed. Insert repeatedly (each with a unique name) while pumping the
+    // loop, until a change for our prefix is delivered or we time out.
+    $prefix = 'rt-' . uniqid() . '-';
+    $deadline = microtime(true) + 25.0;
+    $n = 0;
     while ($received === [] && microtime(true) < $deadline) {
-        $rt->poll(0.5);
+        $db->from('integration_items')->insert(['name' => $prefix . $n])->execute();
+        $n++;
+
+        $until = microtime(true) + 1.0;
+        while ($received === [] && microtime(true) < $until) {
+            $rt->poll(0.3);
+        }
     }
 
     $rt->disconnect();
@@ -49,5 +56,6 @@ test('Realtime: postgres_changes delivers an INSERT over a real WebSocket connec
 
     $new = $received[0]['new'] ?? null;
     \assert(is_array($new), 'postgres_changes payload should carry the new row');
-    expect($new['name'] ?? null)->toBe($name);
+    $name = $new['name'] ?? null;
+    expect(is_string($name) && str_starts_with($name, $prefix))->toBeTrue();
 });
