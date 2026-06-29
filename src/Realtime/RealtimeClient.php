@@ -110,7 +110,7 @@ final class RealtimeClient
 
     public function run(?float $maxSeconds = null): void
     {
-        if ($this->conn === null) {
+        if ($this->conn === null || (! $this->autoReconnect && ! $this->conn->isConnected())) {
             throw new RealtimeException('Realtime is not connected. Call connect() first.');
         }
 
@@ -220,6 +220,9 @@ final class RealtimeClient
             'connected' => $this->conn?->isConnected() ?? false,
             'channels' => array_keys($this->channels),
             'heartbeatInterval' => $this->heartbeatInterval,
+            'autoReconnect' => $this->autoReconnect,
+            'reconnectBaseDelay' => $this->reconnectBaseDelay,
+            'reconnectMaxDelay' => $this->reconnectMaxDelay,
         ];
     }
 
