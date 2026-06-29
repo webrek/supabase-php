@@ -137,10 +137,14 @@ final class PhrityWebSocketConnection implements WebSocketConnection
             $this->client->close($code, $reason);
         } catch (\Throwable) {
             // best-effort: send the close frame if possible
+        } finally {
+            try {
+                $this->client->disconnect();
+            } catch (\Throwable) {
+                // best-effort: tear down the socket even if close() failed
+            }
+            $this->client = null;
         }
-
-        $this->client->disconnect();
-        $this->client = null;
     }
 
     public function isConnected(): bool
