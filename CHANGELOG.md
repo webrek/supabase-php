@@ -9,6 +9,15 @@ backward-compatible features and patch releases contain fixes.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-28
+
+First stable release. The SDK covers Edge Functions, Database (PostgREST), Auth
+(GoTrue), Storage, and Realtime (postgres changes, broadcast, and presence) with
+opt-in auto-reconnect. The public API is now stable and follows Semantic
+Versioning. The change-delivery paths (Database, Auth, Storage, and Realtime
+postgres-changes and presence) are verified end-to-end against a real Supabase
+stack in CI.
+
 ### Added
 - **Realtime — Presence**: `Channel` now supports `onPresenceSync(callable)`,
   `onPresenceJoin(callable)`, `onPresenceLeave(callable)`, `track(array $payload)`,
@@ -22,7 +31,9 @@ backward-compatible features and patch releases contain fixes.
   realtimeReconnectMaxDelay: 30.0)`. When enabled, `run()` detects connection
   drops, waits with exponential backoff (capped at `realtimeReconnectMaxDelay`),
   reconnects, and re-subscribes all channels that were `joined` or `joining`.
-  `poll()` users remain responsible for their own reconnection.
+  `poll()` users remain responsible for their own reconnection. The channel
+  status callback is preserved across reconnects, and a client's tracked
+  presence is re-sent after re-joining.
 
 ## [0.5.2] - 2026-06-28
 
@@ -121,7 +132,8 @@ backward-compatible features and patch releases contain fixes.
   and a typed `Supabase\Exception\*` hierarchy.
 - **Edge Functions** module. `Client::functions()` → `FunctionsClient::invoke()`.
 
-[Unreleased]: https://github.com/webrek/supabase-php/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/webrek/supabase-php/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/webrek/supabase-php/compare/v0.5.2...v1.0.0
 [0.5.2]: https://github.com/webrek/supabase-php/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/webrek/supabase-php/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/webrek/supabase-php/compare/v0.4.0...v0.5.0

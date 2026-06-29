@@ -10,7 +10,7 @@ Framework-agnostic PHP client for [Supabase](https://supabase.com). PHP 8.3+.
 
 ## Status
 
-**Status:** Available: Auth (user flows & admin), Edge Functions, Database (PostgREST), Storage, Realtime (postgres changes & broadcast).
+**Status:** Stable (1.0). Available: Auth (user flows & admin), Edge Functions, Database (PostgREST), Storage, Realtime (postgres changes, broadcast & presence, with opt-in auto-reconnect).
 
 ## Installation
 

@@ -13,7 +13,7 @@ test('README documents Realtime and the WebSocketConnection adapter', function (
         ->and($readme)->toContain('webSocketFactory')
         ->and($readme)->toContain('onPostgresChanges')
         ->and($readme)->not->toContain('**Planned:**')
-        ->and($readme)->toContain('Realtime (postgres changes & broadcast)')
+        ->and($readme)->toContain('Realtime (postgres changes')
         ->and($readme)->toContain('onPresenceSync')
         ->and($readme)->toContain('realtimeAutoReconnect');
 });
