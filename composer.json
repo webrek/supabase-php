@@ -11,12 +11,16 @@
         "psr/http-message": "^2.0",
         "php-http/discovery": "^1.19"
     },
+    "suggest": {
+        "phrity/websocket": "Provides PhrityWebSocketConnection — a ready-made WebSocketConnection adapter for Realtime (composer require phrity/websocket)."
+    },
     "require-dev": {
         "pestphp/pest": "^3.0",
         "phpstan/phpstan": "^2.0",
         "laravel/pint": "^1.18",
         "nyholm/psr7": "^1.8",
-        "guzzlehttp/guzzle": "^7.8"
+        "guzzlehttp/guzzle": "^7.8",
+        "phrity/websocket": "^3.0"
     },
     "autoload": {
         "psr-4": { "Supabase\\": "src/" }
@@ -26,7 +30,7 @@
     },
     "scripts": {
         "test": "pest",
-        "stan": "phpstan analyse",
+        "stan": "php -d memory_limit=512M vendor/phpstan/phpstan/phpstan.phar analyse",
         "lint": "pint"
     },
     "config": {

@@ -9,6 +9,16 @@ backward-compatible features and patch releases contain fixes.
 
 ## [Unreleased]
 
+### Added
+- **Realtime**: `PhrityWebSocketConnection` and `PhrityWebSocketConnectionFactory`
+  — a ready-made `WebSocketConnection` adapter backed by `phrity/websocket ^3.0`.
+  Install the backing library (`composer require phrity/websocket`) and pass
+  `new PhrityWebSocketConnectionFactory()` as `ClientOptions(webSocketFactory:)`.
+  The adapter handles the WebSocket handshake, per-receive read timeouts, and
+  auto-ping-response via phrity's `PingResponder` middleware. `phrity/websocket`
+  is listed under `suggest` in `composer.json` so it is not imposed on consumers
+  who bring their own transport.
+
 ## [0.5.1] - 2026-06-28
 
 ### Security

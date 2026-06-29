@@ -220,6 +220,32 @@ final class MyWebSocketConnectionFactory implements WebSocketConnectionFactory
 Calling `realtime()` without configuring a `webSocketFactory` throws a
 `Supabase\Exception\RealtimeException`.
 
+### Ready-made adapter: phrity/websocket
+
+A concrete `WebSocketConnection` implementation backed by
+[phrity/websocket](https://github.com/sirn-se/websocket-php) is included in
+this package. Install the backing library and use it directly:
+
+```bash
+composer require phrity/websocket
+```
+
+```php
+use Supabase\Client;
+use Supabase\ClientOptions;
+use Supabase\Realtime\PhrityWebSocketConnectionFactory;
+
+$client = new Client('https://YOUR-PROJECT.supabase.co', 'YOUR-ANON-KEY', new ClientOptions(
+    webSocketFactory: new PhrityWebSocketConnectionFactory(),
+));
+```
+
+`PhrityWebSocketConnectionFactory` is a drop-in: it creates one
+`PhrityWebSocketConnection` per `RealtimeClient`, handles the WebSocket
+handshake, adds headers, applies a read timeout on every `receive()` call, and
+auto-responds to WebSocket-level ping frames via phrity's `PingResponder`
+middleware.
+
 > Out of scope for this release: presence, automatic reconnection, and automatic
 > access-token refresh. Recreate the connection on disconnect to reconnect.
 
