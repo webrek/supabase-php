@@ -43,6 +43,9 @@ final class Channel
 
     private bool $presenceEnabled = false;
 
+    /** @var array<mixed>|null last track() payload, re-sent after a re-join */
+    private ?array $lastTrackPayload = null;
+
     /**
      * @param \Closure(string, array<mixed>, bool): void $pusher fn(event, payload, isJoin)
      * @param array<string, mixed> $params
@@ -115,11 +118,13 @@ final class Channel
     public function track(array $payload): void
     {
         $this->presenceEnabled = true;
+        $this->lastTrackPayload = $payload;
         ($this->pusher)('presence', ['type' => 'presence', 'event' => 'track', 'payload' => $payload], false);
     }
 
     public function untrack(): void
     {
+        $this->lastTrackPayload = null;
         ($this->pusher)('presence', ['type' => 'presence', 'event' => 'untrack'], false);
     }
 
@@ -132,10 +137,20 @@ final class Channel
     public function subscribe(?callable $onStatus = null): self
     {
         $this->onStatus = $onStatus;
-        $this->state = self::STATE_JOINING;
-        ($this->pusher)('phx_join', $this->joinConfig(), true);
+        $this->rejoin();
 
         return $this;
+    }
+
+    /**
+     * Re-send the join for this channel without touching the registered status
+     * callback. Used by auto-reconnect to restore the subscription (and, on the
+     * join reply, the tracked presence) after a dropped connection.
+     */
+    public function rejoin(): void
+    {
+        $this->state = self::STATE_JOINING;
+        ($this->pusher)('phx_join', $this->joinConfig(), true);
     }
 
     /**
@@ -227,6 +242,11 @@ final class Channel
             $this->mapPostgresIds($response['postgres_changes']);
         }
         $this->notify('subscribed');
+
+        // Restore our tracked presence after a (re-)join.
+        if ($this->lastTrackPayload !== null) {
+            ($this->pusher)('presence', ['type' => 'presence', 'event' => 'track', 'payload' => $this->lastTrackPayload], false);
+        }
     }
 
     /**

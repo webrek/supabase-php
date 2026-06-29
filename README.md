@@ -192,7 +192,8 @@ $channel = $realtime->channel('room-1')
 $channel->track(['user_id' => 42, 'online_at' => time()]);
 
 // Read the current snapshot:
-// array<string, list<array<string, mixed>>>  (keyed by presence_ref)
+// array<string, list<array<string, mixed>>> — keyed by presence key; each
+// presence carries a `presence_ref` field plus your tracked payload.
 $state = $channel->presenceState();
 
 // Stop broadcasting (leaves the channel's presence):

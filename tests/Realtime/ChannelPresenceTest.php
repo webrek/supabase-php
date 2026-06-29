@@ -73,3 +73,29 @@ test('presence is disabled in join config when no presence is used', function ()
     $ch->subscribe();
     expect($calls[0]['payload']['config']['presence'])->toBe(['key' => '', 'enabled' => false]);
 });
+
+test('rejoin preserves the status callback and re-sends tracked presence', function () {
+    $calls = [];
+    $ch = presenceChannel($calls);
+    $statuses = [];
+    $ch->onPresenceSync(fn () => null);
+    $ch->subscribe(function (string $s) use (&$statuses): void {
+        $statuses[] = $s;
+    });
+    $ch->track(['online_at' => 'now']);
+
+    // First join reply, then a reconnect-style re-join (no onStatus argument).
+    $ch->handleMessage('phx_reply', ['status' => 'ok', 'response' => []], '1');
+    $ch->rejoin();
+    $ch->handleMessage('phx_reply', ['status' => 'ok', 'response' => []], '2');
+
+    // The status callback fired on BOTH joins (not wiped by rejoin).
+    expect($statuses)->toBe(['subscribed', 'subscribed']);
+
+    // A track frame was re-sent after the re-join reply (presence restored).
+    $trackFrames = array_values(array_filter(
+        $calls,
+        fn (array $c): bool => $c['event'] === 'presence' && ($c['payload']['event'] ?? null) === 'track',
+    ));
+    expect(count($trackFrames))->toBeGreaterThanOrEqual(2);
+});

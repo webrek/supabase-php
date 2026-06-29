@@ -179,7 +179,7 @@ final class RealtimeClient
     {
         foreach ($this->channels as $channel) {
             if (in_array($channel->state(), ['joined', 'joining'], true)) {
-                $channel->subscribe();
+                $channel->rejoin();
             }
         }
     }
