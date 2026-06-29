@@ -17,44 +17,71 @@ test('Realtime: postgres_changes delivers an INSERT over a real WebSocket connec
     $rt = IntegrationSupport::realtimeClient()->realtime();
     $db = IntegrationSupport::client();
 
-    $received = [];
+    // The callback runs deep inside poll(); collect the first received change on
+    // a small holder and read it back after each poll().
+    $inbox = new class () {
+        /** @var array<mixed>|null */
+        private ?array $change = null;
+
+        /** @param array<mixed> $change */
+        public function capture(array $change): void
+        {
+            $this->change ??= $change;
+        }
+
+        /** @return array<mixed>|null */
+        public function change(): ?array
+        {
+            return $this->change;
+        }
+    };
+
     $channel = $rt->channel('integration-db-changes')
-        ->onPostgresChanges('INSERT', 'public', 'integration_items', null, function (array $change) use (&$received): void {
-            $received[] = $change;
+        ->onPostgresChanges('INSERT', 'public', 'integration_items', null, function (array $change) use ($inbox): void {
+            $inbox->capture($change);
         });
 
     $rt->connect();
     $channel->subscribe();
 
     // Wait for the subscription to be confirmed (phx_reply ok -> joined).
-    $deadline = microtime(true) + 10.0;
-    while ($channel->state() !== 'joined' && microtime(true) < $deadline) {
+    $joinDeadline = microtime(true) + 10.0;
+    while ($channel->state() !== 'joined' && microtime(true) < $joinDeadline) {
         $rt->poll(0.5);
     }
     expect($channel->state())->toBe('joined');
 
     // Realtime does not replay past changes and the replication subscription
     // becomes active a moment AFTER the join reply, so a single early INSERT can
-    // be missed. Insert repeatedly (each with a unique name) while pumping the
-    // loop, until a change for our prefix is delivered or we time out.
+    // be missed. Insert once per second (each with a unique name) while pumping
+    // the loop, until a change is delivered or we time out.
     $prefix = 'rt-' . uniqid() . '-';
     $deadline = microtime(true) + 25.0;
+    $change = null;
     $n = 0;
-    while ($received === [] && microtime(true) < $deadline) {
-        $db->from('integration_items')->insert(['name' => $prefix . $n])->execute();
-        $n++;
+    $lastInsert = 0.0;
+    while (microtime(true) < $deadline) {
+        $now = microtime(true);
+        if ($now - $lastInsert >= 1.0) {
+            $db->from('integration_items')->insert(['name' => $prefix . $n])->execute();
+            $n++;
+            $lastInsert = $now;
+        }
 
-        $until = microtime(true) + 1.0;
-        while ($received === [] && microtime(true) < $until) {
-            $rt->poll(0.3);
+        $rt->poll(0.3);
+
+        $change = $inbox->change();
+        if ($change !== null) {
+            break;
         }
     }
 
     $rt->disconnect();
 
-    expect($received)->not->toBeEmpty();
+    expect($change)->not->toBeNull();
+    \assert(is_array($change));
 
-    $new = $received[0]['new'] ?? null;
+    $new = $change['new'] ?? null;
     \assert(is_array($new), 'postgres_changes payload should carry the new row');
     $name = $new['name'] ?? null;
     expect(is_string($name) && str_starts_with($name, $prefix))->toBeTrue();
