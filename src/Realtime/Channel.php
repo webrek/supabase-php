@@ -12,6 +12,7 @@ namespace Supabase\Realtime;
  */
 final class Channel
 {
+    private readonly Presence $presence;
     private const STATE_CLOSED = 'closed';
     private const STATE_JOINING = 'joining';
     private const STATE_JOINED = 'joined';
@@ -31,6 +32,17 @@ final class Channel
     /** @var (callable(string): void)|null */
     private $onStatus = null;
 
+    /** @var (callable():void)|null */
+    private $onPresenceSync = null;
+
+    /** @var (callable(string,array<mixed>,array<mixed>):void)|null */
+    private $onPresenceJoin = null;
+
+    /** @var (callable(string,array<mixed>,array<mixed>):void)|null */
+    private $onPresenceLeave = null;
+
+    private bool $presenceEnabled = false;
+
     /**
      * @param \Closure(string, array<mixed>, bool): void $pusher fn(event, payload, isJoin)
      * @param array<string, mixed> $params
@@ -40,6 +52,7 @@ final class Channel
         private readonly \Closure $pusher,
         private readonly array $params = [],
     ) {
+        $this->presence = new Presence();
     }
 
     public function onPostgresChanges(string $event, string $schema, string $table, ?string $filter, callable $callback): self
@@ -74,6 +87,48 @@ final class Channel
         ], false);
     }
 
+    public function onPresenceSync(callable $cb): self
+    {
+        $this->onPresenceSync = $cb;
+        $this->presenceEnabled = true;
+
+        return $this;
+    }
+
+    public function onPresenceJoin(callable $cb): self
+    {
+        $this->onPresenceJoin = $cb;
+        $this->presenceEnabled = true;
+
+        return $this;
+    }
+
+    public function onPresenceLeave(callable $cb): self
+    {
+        $this->onPresenceLeave = $cb;
+        $this->presenceEnabled = true;
+
+        return $this;
+    }
+
+    /** @param array<mixed> $payload */
+    public function track(array $payload): void
+    {
+        $this->presenceEnabled = true;
+        ($this->pusher)('presence', ['type' => 'presence', 'event' => 'track', 'payload' => $payload], false);
+    }
+
+    public function untrack(): void
+    {
+        ($this->pusher)('presence', ['type' => 'presence', 'event' => 'untrack'], false);
+    }
+
+    /** @return array<string, list<array<string, mixed>>> */
+    public function presenceState(): array
+    {
+        return $this->presence->state();
+    }
+
     public function subscribe(?callable $onStatus = null): self
     {
         $this->onStatus = $onStatus;
@@ -100,7 +155,10 @@ final class Channel
         $payload = [
             'config' => [
                 'broadcast' => ['ack' => false, 'self' => false],
-                'presence' => ['key' => '', 'enabled' => false],
+                'presence' => [
+                    'key' => isset($this->params['presence_key']) && is_string($this->params['presence_key']) ? $this->params['presence_key'] : '',
+                    'enabled' => $this->presenceEnabled,
+                ],
                 'postgres_changes' => $pg,
                 'private' => false,
             ],
@@ -128,6 +186,16 @@ final class Channel
             case 'broadcast':
                 $this->handleBroadcast($payload);
                 break;
+            case 'presence_state':
+                $this->presence->syncState($payload, $this->onPresenceJoin, $this->onPresenceLeave);
+                $this->firePresenceSync();
+                break;
+            case 'presence_diff':
+                $joins = isset($payload['joins']) && is_array($payload['joins']) ? $payload['joins'] : [];
+                $leaves = isset($payload['leaves']) && is_array($payload['leaves']) ? $payload['leaves'] : [];
+                $this->presence->syncDiff($joins, $leaves, $this->onPresenceJoin, $this->onPresenceLeave);
+                $this->firePresenceSync();
+                break;
             case 'phx_error':
                 $this->state = self::STATE_ERRORED;
                 $this->notify('error');
@@ -136,7 +204,7 @@ final class Channel
                 $this->state = self::STATE_CLOSED;
                 $this->notify('closed');
                 break;
-                // presence_state / presence_diff / system: ignored (presence deferred to a later release)
+                // system: ignored
         }
     }
 
@@ -230,6 +298,13 @@ final class Channel
             if ($binding['event'] === '*' || $binding['event'] === $event) {
                 ($binding['callback'])($payload);
             }
+        }
+    }
+
+    private function firePresenceSync(): void
+    {
+        if ($this->onPresenceSync !== null) {
+            ($this->onPresenceSync)();
         }
     }
 
