@@ -24,6 +24,9 @@ final readonly class ClientOptions implements \JsonSerializable
         #[\SensitiveParameter] public ?string $accessToken = null,
         public ?WebSocketConnectionFactory $webSocketFactory = null,
         public float $realtimeHeartbeatInterval = 30.0,
+        public bool $realtimeAutoReconnect = false,
+        public float $realtimeReconnectBaseDelay = 1.0,
+        public float $realtimeReconnectMaxDelay = 30.0,
     ) {
     }
 
@@ -45,6 +48,9 @@ final readonly class ClientOptions implements \JsonSerializable
             'accessToken' => $this->accessToken === null ? null : HeaderRedaction::REDACTED,
             'webSocketFactory' => $this->webSocketFactory,
             'realtimeHeartbeatInterval' => $this->realtimeHeartbeatInterval,
+            'realtimeAutoReconnect' => $this->realtimeAutoReconnect,
+            'realtimeReconnectBaseDelay' => $this->realtimeReconnectBaseDelay,
+            'realtimeReconnectMaxDelay' => $this->realtimeReconnectMaxDelay,
         ];
     }
 

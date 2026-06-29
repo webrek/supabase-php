@@ -39,6 +39,9 @@ final class RealtimeClient
         private readonly string $url,
         #[\SensitiveParameter] private readonly string $apiKey,
         private readonly float $heartbeatInterval = 30.0,
+        private readonly bool $autoReconnect = false,
+        private readonly float $reconnectBaseDelay = 1.0,
+        private readonly float $reconnectMaxDelay = 30.0,
     ) {
         $this->serializer = new Serializer();
     }
@@ -107,22 +110,85 @@ final class RealtimeClient
 
     public function run(?float $maxSeconds = null): void
     {
-        $this->requireConn();
+        if ($this->conn === null) {
+            throw new RealtimeException('Realtime is not connected. Call connect() first.');
+        }
+
         $this->running = true;
         $start = $this->now();
+        $delay = $this->reconnectBaseDelay;
         $pollTimeout = min(1.0, $maxSeconds ?? 1.0);
 
         while ($this->running) {
-            if (!($this->conn?->isConnected() ?? false)) {
-                break;
+            if (! ($this->conn?->isConnected() ?? false)) {
+                if (! $this->autoReconnect) {
+                    break;
+                }
+
+                $this->sleepSeconds($delay);
+                $delay = min($delay * 2.0, $this->reconnectMaxDelay);
+
+                try {
+                    $this->reconnect();
+                    $delay = $this->reconnectBaseDelay;
+                } catch (\Throwable) {
+                    if ($maxSeconds !== null && ($this->now() - $start) >= $maxSeconds) {
+                        break;
+                    }
+
+                    continue; // keep backing off
+                }
             }
-            $this->poll($pollTimeout);
+
+            try {
+                $this->poll($pollTimeout);
+            } catch (\Throwable $e) {
+                if (! $this->autoReconnect) {
+                    throw $e;
+                }
+
+                // drop will be detected at loop top
+                $this->conn = null;
+            }
+
             if ($maxSeconds !== null && ($this->now() - $start) >= $maxSeconds) {
                 break;
             }
         }
 
         $this->running = false;
+    }
+
+    private function reconnect(): void
+    {
+        if ($this->conn !== null) {
+            try {
+                $this->conn->close();
+            } catch (\Throwable) {
+            }
+        }
+
+        $conn = $this->factory->create();
+        $conn->connect($this->buildUrl(), ['apikey' => $this->apiKey]);
+        $this->conn = $conn;
+        $this->lastHeartbeat = $this->now();
+        $this->resubscribe();
+    }
+
+    private function resubscribe(): void
+    {
+        foreach ($this->channels as $channel) {
+            if (in_array($channel->state(), ['joined', 'joining'], true)) {
+                $channel->subscribe();
+            }
+        }
+    }
+
+    private function sleepSeconds(float $seconds): void
+    {
+        if ($seconds > 0.0) {
+            usleep((int) ($seconds * 1_000_000));
+        }
     }
 
     public function stop(): void

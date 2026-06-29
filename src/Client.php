@@ -32,6 +32,12 @@ final class Client
 
     private readonly float $realtimeHeartbeatInterval;
 
+    private readonly bool $realtimeAutoReconnect;
+
+    private readonly float $realtimeReconnectBaseDelay;
+
+    private readonly float $realtimeReconnectMaxDelay;
+
     public function __construct(string $url, #[\SensitiveParameter] string $apiKey, ?ClientOptions $options = null)
     {
         $parsed = parse_url($url);
@@ -69,6 +75,9 @@ final class Client
         $this->apiKey = $apiKey;
         $this->webSocketFactory = $options->webSocketFactory;
         $this->realtimeHeartbeatInterval = $options->realtimeHeartbeatInterval;
+        $this->realtimeAutoReconnect = $options->realtimeAutoReconnect;
+        $this->realtimeReconnectBaseDelay = $options->realtimeReconnectBaseDelay;
+        $this->realtimeReconnectMaxDelay = $options->realtimeReconnectMaxDelay;
 
         $httpClient = $options->httpClient ?? Psr18ClientDiscovery::find();
         $requestFactory = $options->requestFactory ?? Psr17FactoryDiscovery::findRequestFactory();
@@ -159,6 +168,9 @@ final class Client
             $this->url,
             $this->apiKey,
             heartbeatInterval: $this->realtimeHeartbeatInterval,
+            autoReconnect: $this->realtimeAutoReconnect,
+            reconnectBaseDelay: $this->realtimeReconnectBaseDelay,
+            reconnectMaxDelay: $this->realtimeReconnectMaxDelay,
         );
     }
 
