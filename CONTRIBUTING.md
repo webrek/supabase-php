@@ -67,6 +67,55 @@ rm -rf vendor composer.lock && composer install && composer test
 4. Do not introduce backward-incompatible changes to the public API without
    prior discussion.
 
+## Running integration tests
+
+Integration tests exercise the HTTP modules (Database, Auth, Storage) against a
+real Supabase stack.  They are **automatically skipped** when the required env
+vars are absent, so `composer test` remains green in environments without a
+running stack.
+
+### Requirements
+
+- [Supabase CLI](https://supabase.com/docs/guides/cli) installed locally
+- Three env vars exported in your shell:
+
+```bash
+export SUPABASE_URL=http://localhost:54321
+export SUPABASE_ANON_KEY=<anon key>
+export SUPABASE_SERVICE_ROLE_KEY=<service role key>
+```
+
+### Starting the local stack
+
+```bash
+# First time — generate config.toml and apply migrations
+supabase init
+supabase start
+
+# Print the connection keys (copy them into the env vars above)
+supabase status
+```
+
+The migration at `supabase/migrations/20260628000001_integration.sql` creates the
+`public.integration_items` table used by the database tests.  It is applied
+automatically by `supabase start`.
+
+### Running the tests
+
+```bash
+# Integration suite only (requires the stack to be running)
+vendor/bin/pest tests/Integration
+
+# Full suite — integration tests are skipped when SUPABASE_URL is unset
+composer test
+```
+
+### Stopping the stack
+
+```bash
+supabase stop --no-backup
+```
+
 ## Reporting security issues
 
 Please do not open public issues for vulnerabilities — see [SECURITY.md](SECURITY.md).

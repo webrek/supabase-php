@@ -1,0 +1,62 @@
+name: Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # 2.37.2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, json
+          coverage: none
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Start Supabase local stack
+        run: |
+          # supabase init generates supabase/config.toml (we do not commit it
+          # because its schema is CLI-version-specific).  --force overwrites any
+          # stale config.toml but does NOT touch supabase/migrations/, so the
+          # migration checked into the repository is preserved and will be applied
+          # by `supabase start`.
+          supabase init --force
+          supabase start
+
+      - name: Export Supabase connection env vars
+        run: |
+          # `supabase status -o env` prints KEY=VALUE pairs including:
+          #   API_URL, ANON_KEY, SERVICE_ROLE_KEY, DB_URL, STUDIO_URL, …
+          # We eval them into the current shell, then write the three we need
+          # to $GITHUB_ENV so all subsequent steps can read them.
+          eval "$(supabase status -o env)"
+          {
+            echo "SUPABASE_URL=${API_URL}"
+            echo "SUPABASE_ANON_KEY=${ANON_KEY}"
+            echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}"
+          } >> "$GITHUB_ENV"
+
+      - name: Run integration tests
+        run: vendor/bin/pest tests/Integration --colors=always
+
+      - name: Stop Supabase local stack
+        if: always()
+        run: supabase stop --no-backup
