@@ -168,6 +168,60 @@ $realtime->disconnect();
 Prefer your own loop? Call `poll(float $timeout)` repeatedly instead of `run()`,
 and `stop()` to break out of `run()` from inside a callback.
 
+### Presence
+
+Track which clients are online and get notified when they join or leave. Register
+callbacks with `onPresenceSync`, `onPresenceJoin`, and `onPresenceLeave` before
+calling `subscribe()`, then call `track()` to broadcast your own state:
+
+```php
+$channel = $realtime->channel('room-1')
+    ->onPresenceSync(function (): void {
+        // Fired every time the full presence state is (re)synced — on join and
+        // after every diff. Read the current snapshot with presenceState().
+    })
+    ->onPresenceJoin(function (string $key, array $currentPresences, array $newPresences): void {
+        // A client started tracking; $newPresences lists their state payloads.
+    })
+    ->onPresenceLeave(function (string $key, array $currentPresences, array $leftPresences): void {
+        // A client stopped tracking.
+    })
+    ->subscribe();
+
+// Announce your own state (any serialisable array):
+$channel->track(['user_id' => 42, 'online_at' => time()]);
+
+// Read the current snapshot:
+// array<string, list<array<string, mixed>>>  (keyed by presence_ref)
+$state = $channel->presenceState();
+
+// Stop broadcasting (leaves the channel's presence):
+$channel->untrack();
+```
+
+### Auto-reconnect
+
+By default the client does not reconnect after a dropped connection. Pass
+`realtimeAutoReconnect: true` to make `run()` reconnect with exponential backoff
+and automatically re-subscribe all active channels:
+
+```php
+$client = new Client('https://YOUR-PROJECT.supabase.co', 'YOUR-ANON-KEY', new ClientOptions(
+    webSocketFactory: new MyWebSocketConnectionFactory(),
+    realtimeAutoReconnect: true,
+    realtimeReconnectBaseDelay: 1.0,  // initial retry delay in seconds (default)
+    realtimeReconnectMaxDelay: 30.0,  // cap on retry delay in seconds (default)
+));
+
+$realtime = $client->realtime();
+$realtime->connect();
+// ... subscribe channels ...
+$realtime->run(); // loops forever; reconnects + re-subscribes if the socket drops
+```
+
+When driving the loop yourself with `poll()`, reconnection is not automatic.
+After a receive error, call `connect()` again and re-subscribe your channels.
+
 ### Implementing `WebSocketConnection`
 
 `WebSocketConnection` is a small contract you back with any WebSocket client.
@@ -246,8 +300,7 @@ handshake, adds headers, applies a read timeout on every `receive()` call, and
 auto-responds to WebSocket-level ping frames via phrity's `PingResponder`
 middleware.
 
-> Out of scope for this release: presence, automatic reconnection, and automatic
-> access-token refresh. Recreate the connection on disconnect to reconnect.
+> Out of scope for this release: automatic access-token refresh.
 
 ## Auth (GoTrue)
 

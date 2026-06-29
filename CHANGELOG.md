@@ -9,6 +9,21 @@ backward-compatible features and patch releases contain fixes.
 
 ## [Unreleased]
 
+### Added
+- **Realtime — Presence**: `Channel` now supports `onPresenceSync(callable)`,
+  `onPresenceJoin(callable)`, `onPresenceLeave(callable)`, `track(array $payload)`,
+  `untrack()`, and `presenceState(): array<string, list<array<string, mixed>>>`.
+  The server sends `presence_state` (full sync) and `presence_diff` (join/leave
+  deltas) Phoenix frames; the `Presence` class merges them and fires the registered
+  callbacks. Presence is opt-in: passing `presence_key` in channel params or
+  registering any presence callback enables it in the `phx_join` config.
+- **Realtime — Auto-reconnect**: opt-in via
+  `ClientOptions(realtimeAutoReconnect: true, realtimeReconnectBaseDelay: 1.0,
+  realtimeReconnectMaxDelay: 30.0)`. When enabled, `run()` detects connection
+  drops, waits with exponential backoff (capped at `realtimeReconnectMaxDelay`),
+  reconnects, and re-subscribes all channels that were `joined` or `joining`.
+  `poll()` users remain responsible for their own reconnection.
+
 ## [0.5.2] - 2026-06-28
 
 ### Added
