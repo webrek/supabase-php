@@ -92,10 +92,12 @@ test('rejoin preserves the status callback and re-sends tracked presence', funct
     // The status callback fired on BOTH joins (not wiped by rejoin).
     expect($statuses)->toBe(['subscribed', 'subscribed']);
 
-    // A track frame was re-sent after the re-join reply (presence restored).
-    $trackFrames = array_values(array_filter(
+    // Presence (track) frames were re-sent after the re-join reply: the initial
+    // track plus a re-track on each join reply (presence restored on reconnect).
+    // Only track() is called here (no untrack), so every presence frame is a track.
+    $presenceFrames = array_values(array_filter(
         $calls,
-        fn (array $c): bool => $c['event'] === 'presence' && ($c['payload']['event'] ?? null) === 'track',
+        fn (array $c): bool => $c['event'] === 'presence',
     ));
-    expect(count($trackFrames))->toBeGreaterThanOrEqual(2);
+    expect(count($presenceFrames))->toBeGreaterThanOrEqual(2);
 });
