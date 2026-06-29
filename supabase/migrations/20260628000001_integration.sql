@@ -15,6 +15,17 @@ create table if not exists public.integration_items (
 grant all privileges on table public.integration_items to anon, authenticated, service_role;
 grant usage, select on sequence public.integration_items_id_seq to anon, authenticated, service_role;
 
--- Expose the table to the Realtime publication so a future Realtime integration
--- test can subscribe to changes on this table without a schema migration.
+-- Realtime applies RLS when authorizing postgres_changes delivery, so enable RLS
+-- and allow anon to read. The Realtime integration test subscribes with the anon
+-- key; this permissive read policy lets the change events reach the subscriber.
+-- (PostgREST writes in the tests use the service_role key, which bypasses RLS.)
+alter table public.integration_items enable row level security;
+create policy "integration_items_anon_select"
+    on public.integration_items
+    for select
+    to anon
+    using (true);
+
+-- Expose the table to the Realtime publication so the Realtime integration test
+-- can subscribe to changes on this table.
 alter publication supabase_realtime add table public.integration_items;

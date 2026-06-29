@@ -66,16 +66,19 @@ final class IntegrationSupport
     }
 
     /**
-     * Returns a Client with the service-role key and a real WebSocket transport
-     * (the phrity/websocket reference adapter) for Realtime integration tests.
+     * Returns a Client with the anon key and a real WebSocket transport (the
+     * phrity/websocket reference adapter) for Realtime integration tests.
+     *
+     * Realtime authorizes postgres_changes delivery via RLS, so the subscriber
+     * uses the anon role (the test table has a permissive anon SELECT policy).
      */
     public static function realtimeClient(): Client
     {
         $url = getenv('SUPABASE_URL');
-        $key = getenv('SUPABASE_SERVICE_ROLE_KEY');
+        $key = getenv('SUPABASE_ANON_KEY');
 
         assert(is_string($url) && $url !== '', 'SUPABASE_URL env var must be set');
-        assert(is_string($key) && $key !== '', 'SUPABASE_SERVICE_ROLE_KEY env var must be set');
+        assert(is_string($key) && $key !== '', 'SUPABASE_ANON_KEY env var must be set');
 
         $factory = new Psr17Factory();
 
