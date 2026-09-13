@@ -20,6 +20,18 @@ backward-compatible features and patch releases contain fixes.
   callback so it can be persisted, and returns a client authenticated as that user.
 - `Session::isExpired(int $marginSeconds = 0, ?int $now = null)`.
 - `ClientOptions::withAccessToken()` and `ClientOptions::withHttp()` immutable copies.
+- **Local JWT verification**: `GoTrueClient::getClaims(string $jwt): Claims` verifies
+  an access token against the project's JWKS (ES256 / RS256) or the configured
+  `jwtSecret` (HS256) and returns a typed `Claims` object, with no round-trip to
+  `/auth/v1/user`. Legacy HS256 tokens without a secret fall back to one request.
+  The key set is memoised per process and, via `ClientOptions(jwksCache:)`, in any
+  PSR-16 cache (`jwksCacheTtl`, default 600 s); an unknown `kid` refetches once.
+- `Supabase\Auth\Claims`, `Supabase\Auth\Jwks` (with `clearProcessCache()`), and the
+  internal `Supabase\Auth\JwtVerifier`.
+- `ClientOptions`: `jwksCache`, `jwksCacheTtl`, `jwtSecret` (redacted in dumps).
+
+### Changed
+- New requirements: `psr/simple-cache ^3.0` (interface only) and `ext-openssl`.
 
 ### Fixed
 - `PhrityWebSocketConnection::close()` falls back to a normal closure (1000) for a

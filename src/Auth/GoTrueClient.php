@@ -4,17 +4,27 @@ declare(strict_types=1);
 
 namespace Supabase\Auth;
 
+use Psr\SimpleCache\CacheInterface;
+use Supabase\Exception\AuthException;
 use Supabase\Http\Transport;
 
 final class GoTrueClient
 {
     private readonly AuthHttp $http;
 
+    private readonly Jwks $jwks;
+
     private ?AdminClient $admin = null;
 
-    public function __construct(Transport $transport, private readonly string $baseUrl)
-    {
+    public function __construct(
+        Transport $transport,
+        private readonly string $baseUrl,
+        ?CacheInterface $jwksCache = null,
+        int $jwksCacheTtl = 600,
+        #[\SensitiveParameter] private readonly ?string $jwtSecret = null,
+    ) {
         $this->http = new AuthHttp($transport);
+        $this->jwks = new Jwks($this->http, $baseUrl, $jwksCache, $jwksCacheTtl);
     }
 
     public function admin(): AdminClient
@@ -50,6 +60,47 @@ final class GoTrueClient
         ]);
 
         return User::fromArray($data);
+    }
+
+    /**
+     * Verifies an access token locally and returns its claims: ES256 / RS256
+     * against the project's JWKS, HS256 against the configured jwtSecret.
+     * A legacy HS256 token without a jwtSecret is verified with one request
+     * to /auth/v1/user instead. Throws AuthException when the token is
+     * malformed, expired, not yet valid, or its signature does not verify.
+     */
+    public function getClaims(string $jwt): Claims
+    {
+        $decoded = JwtVerifier::decode($jwt);
+        $alg = $decoded['header']['alg'] ?? null;
+        if (! is_string($alg)) {
+            throw new AuthException('Invalid JWT: missing "alg" header.');
+        }
+
+        if ($alg === 'HS256') {
+            if ($this->jwtSecret === null) {
+                // A shared-secret token cannot be checked locally: let GoTrue do it.
+                $this->getUser($jwt);
+            } else {
+                JwtVerifier::verifyWithSecret($decoded['signingInput'], $decoded['signature'], $this->jwtSecret);
+            }
+        } elseif ($alg === 'ES256' || $alg === 'RS256') {
+            $kid = $decoded['header']['kid'] ?? null;
+            if (! is_string($kid) || $kid === '') {
+                throw new AuthException('Invalid JWT: missing "kid" header.');
+            }
+            $jwk = $this->jwks->find($kid);
+            if ($jwk === null) {
+                throw new AuthException("No key in the project JWKS matches kid \"{$kid}\".");
+            }
+            JwtVerifier::verifyWithJwk($decoded['signingInput'], $decoded['signature'], $alg, $jwk);
+        } else {
+            throw new AuthException("Unsupported JWT algorithm \"{$alg}\".");
+        }
+
+        JwtVerifier::assertTimeClaims($decoded['payload']);
+
+        return Claims::fromArray($decoded['payload']);
     }
 
     public function refreshSession(string $refreshToken): Session

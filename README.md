@@ -356,6 +356,35 @@ needed; it does not retry a request whose token expired mid-flight. A refresh
 token that is no longer valid throws `AuthException`. `withAccessToken(null)`
 returns a client that uses the apikey as bearer again.
 
+### Verifying a JWT locally (JWKS)
+
+`getClaims()` checks a token's signature against the project's public keys
+(`/auth/v1/.well-known/jwks.json`) plus its `exp`/`nbf`, without calling
+`/auth/v1/user`. Give it a PSR-16 cache so the key set is fetched once and
+shared across requests:
+
+```php
+use Supabase\ClientOptions;
+
+$supabase = new Client($url, $anonKey, new ClientOptions(
+    jwksCache: $psr16Cache,   // any PSR-16 store: APCu, Redis, filesystem, ...
+    jwksCacheTtl: 600,        // seconds (default)
+));
+
+$claims = $supabase->auth()->getClaims($jwt);   // AuthException if invalid, expired or not yet valid
+$claims->sub;          // user id
+$claims->role;         // 'authenticated'
+$claims->email;
+$claims->raw['aal'];   // any other claim
+```
+
+ES256 and RS256 keys are verified locally. Projects still on the legacy HS256
+shared secret publish no public key: pass `jwtSecret` in `ClientOptions` to
+verify locally, otherwise `getClaims()` falls back to one `/auth/v1/user`
+request. Without a cache the key set is fetched once per process (memoised
+for `jwksCacheTtl`); an unknown `kid` triggers a single refetch so rotated keys
+are picked up. Requires `ext-openssl`.
+
 ### Admin API (service_role)
 
 Construct the client with your **service_role** key (never expose it to browsers):

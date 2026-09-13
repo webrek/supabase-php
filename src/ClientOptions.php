@@ -7,6 +7,7 @@ namespace Supabase;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\SimpleCache\CacheInterface;
 use Supabase\Http\HeaderRedaction;
 use Supabase\Realtime\WebSocketConnectionFactory;
 
@@ -27,6 +28,9 @@ final readonly class ClientOptions implements \JsonSerializable
         public bool $realtimeAutoReconnect = false,
         public float $realtimeReconnectBaseDelay = 1.0,
         public float $realtimeReconnectMaxDelay = 30.0,
+        public ?CacheInterface $jwksCache = null,
+        public int $jwksCacheTtl = 600,
+        #[\SensitiveParameter] public ?string $jwtSecret = null,
     ) {
     }
 
@@ -52,6 +56,9 @@ final readonly class ClientOptions implements \JsonSerializable
             realtimeAutoReconnect: $this->realtimeAutoReconnect,
             realtimeReconnectBaseDelay: $this->realtimeReconnectBaseDelay,
             realtimeReconnectMaxDelay: $this->realtimeReconnectMaxDelay,
+            jwksCache: $this->jwksCache,
+            jwksCacheTtl: $this->jwksCacheTtl,
+            jwtSecret: $this->jwtSecret,
         );
     }
 
@@ -73,6 +80,9 @@ final readonly class ClientOptions implements \JsonSerializable
             realtimeAutoReconnect: $this->realtimeAutoReconnect,
             realtimeReconnectBaseDelay: $this->realtimeReconnectBaseDelay,
             realtimeReconnectMaxDelay: $this->realtimeReconnectMaxDelay,
+            jwksCache: $this->jwksCache,
+            jwksCacheTtl: $this->jwksCacheTtl,
+            jwtSecret: $this->jwtSecret,
         );
     }
 
@@ -97,6 +107,9 @@ final readonly class ClientOptions implements \JsonSerializable
             'realtimeAutoReconnect' => $this->realtimeAutoReconnect,
             'realtimeReconnectBaseDelay' => $this->realtimeReconnectBaseDelay,
             'realtimeReconnectMaxDelay' => $this->realtimeReconnectMaxDelay,
+            'jwksCache' => $this->jwksCache,
+            'jwksCacheTtl' => $this->jwksCacheTtl,
+            'jwtSecret' => $this->jwtSecret === null ? null : HeaderRedaction::REDACTED,
         ];
     }
 

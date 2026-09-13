@@ -135,7 +135,13 @@ final class Client
 
     public function auth(): GoTrueClient
     {
-        return $this->auth ??= new GoTrueClient($this->transport, $this->url);
+        return $this->auth ??= new GoTrueClient(
+            $this->transport,
+            $this->url,
+            $this->options->jwksCache,
+            $this->options->jwksCacheTtl,
+            $this->options->jwtSecret,
+        );
     }
 
     /**
