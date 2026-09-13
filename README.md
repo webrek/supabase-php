@@ -364,6 +364,35 @@ yourself. `withSession()` (below) refreshes one on demand. Tokens are redacted i
 `var_dump`/`print_r`/`json_encode` and in `AuthException` bodies, and `Session` cannot be
 serialized. (PHP's `var_export()` cannot be intercepted — never `var_export()` a `Session`.)
 
+### OAuth on the server (PKCE)
+
+Run the OAuth redirect flow entirely from PHP. Generate a PKCE pair, keep the
+verifier in your session, send the user to the provider, and trade the `code`
+from the callback for a `Session`:
+
+```php
+use Supabase\Auth\Pkce;
+
+// 1. Before redirecting
+$pkce = Pkce::generate();
+$_SESSION['pkce_verifier'] = $pkce->verifier;
+header('Location: ' . $supabase->auth()->getOAuthSignInUrl('github', [
+    'redirect_to' => 'https://app.test/auth/callback',
+], $pkce));
+
+// 2. In the callback (?code=...)
+$session = $supabase->auth()->exchangeCodeForSession($_GET['code'], $_SESSION['pkce_verifier']);
+```
+
+### Sign in with an ID token (Google, Apple, ...)
+
+For native or server-side flows where you already hold an OpenID Connect ID
+token from the provider:
+
+```php
+$session = $supabase->auth()->signInWithIdToken('google', $idToken, ['nonce' => $nonce]);
+```
+
 ### Acting as a user (Row Level Security)
 
 On the server every request arrives with a different user's JWT. Bind it to a

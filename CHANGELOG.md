@@ -38,6 +38,13 @@ backward-compatible features and patch releases contain fixes.
   param still wins). `Channel::isPrivate()`, `Channel::setAccessToken()`, `Channel::pushAccessToken()`.
 - `RealtimeClient::setAuth(?string $jwt)` rotates the user token in place: joined channels
   receive an `access_token` event and later joins carry the new token.
+- **OAuth with PKCE from the server**: `Supabase\Auth\Pkce` (`generate()`, `fromVerifier()`,
+  verifier redacted in dumps), `getOAuthSignInUrl($provider, $options, ?Pkce $pkce)` adds
+  `code_challenge` / `code_challenge_method=s256`, and
+  `GoTrueClient::exchangeCodeForSession(string $authCode, string $codeVerifier): Session`
+  completes the flow (`grant_type=pkce`).
+- `GoTrueClient::signInWithIdToken(string $provider, string $idToken, array $options = []): Session`
+  (`grant_type=id_token`) for Google / Apple ID tokens.
 
 ### Changed
 - New requirements: `psr/simple-cache ^3.0` (interface only) and `ext-openssl`.

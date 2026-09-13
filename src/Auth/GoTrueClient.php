@@ -157,14 +157,52 @@ final class GoTrueClient
     }
 
     /**
-     * @param array<string,mixed> $options
+     * Builds the /authorize URL to redirect the user to. Pass a Pkce pair to
+     * run the PKCE flow: keep its verifier in the PHP session and finish with
+     * exchangeCodeForSession() when the provider redirects back with ?code=.
+     *
+     * @param array<string,mixed> $options e.g. redirect_to, scopes
      */
-    public function getOAuthSignInUrl(string $provider, array $options = []): string
+    public function getOAuthSignInUrl(string $provider, array $options = [], ?Pkce $pkce = null): string
     {
+        $params = ['provider' => $provider] + $options;
+        if ($pkce !== null) {
+            $params['code_challenge'] = $pkce->challenge;
+            $params['code_challenge_method'] = Pkce::METHOD;
+        }
+
         // RFC 3986 so spaces encode as %20 (not +), which OAuth servers expect in redirect_to.
-        $query = http_build_query(['provider' => $provider] + $options, encoding_type: PHP_QUERY_RFC3986);
+        $query = http_build_query($params, encoding_type: PHP_QUERY_RFC3986);
 
         return rtrim($this->baseUrl, '/') . '/auth/v1/authorize?' . $query;
+    }
+
+    /**
+     * Completes the PKCE flow: trades the `code` from the OAuth callback and
+     * the verifier generated before the redirect for a Session.
+     */
+    public function exchangeCodeForSession(string $authCode, #[\SensitiveParameter] string $codeVerifier): Session
+    {
+        $data = $this->http->request('POST', '/token?grant_type=pkce', [
+            'body' => ['auth_code' => $authCode, 'code_verifier' => $codeVerifier],
+        ]);
+
+        return Session::fromArray($data);
+    }
+
+    /**
+     * Signs in with an OpenID Connect ID token issued by a provider such as
+     * Google or Apple (native / server-side flows).
+     *
+     * @param array<string,mixed> $options e.g. nonce, access_token, gotrue_meta_security
+     */
+    public function signInWithIdToken(string $provider, #[\SensitiveParameter] string $idToken, array $options = []): Session
+    {
+        $data = $this->http->request('POST', '/token?grant_type=id_token', [
+            'body' => ['provider' => $provider, 'id_token' => $idToken] + $options,
+        ]);
+
+        return Session::fromArray($data);
     }
 
     /**
