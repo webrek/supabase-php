@@ -35,6 +35,19 @@ final readonly class Session implements \JsonSerializable
     }
 
     /**
+     * Whether the access token has expired, or will within $marginSeconds.
+     * A session without a known expiry is treated as valid.
+     */
+    public function isExpired(int $marginSeconds = 0, ?int $now = null): bool
+    {
+        if ($this->expiresAt === null) {
+            return false;
+        }
+
+        return $this->expiresAt - $marginSeconds <= ($now ?? time());
+    }
+
+    /**
      * @return array<string,mixed>
      */
     public function __debugInfo(): array

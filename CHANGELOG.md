@@ -9,6 +9,22 @@ backward-compatible features and patch releases contain fixes.
 
 ## [Unreleased]
 
+### Added
+- **Per-request user context**: `Client::withAccessToken(?string $jwt)` returns a
+  sibling client that authenticates as the given user (`Authorization: Bearer <jwt>`)
+  so Row Level Security applies as that user. The apikey, HTTP client and every
+  option are shared; `null` reverts to the apikey. The original client is unchanged.
+- **Session binding with on-demand refresh**: `Client::withSession(Session $session,
+  ?callable $onTokenRefreshed = null, int $expiryMargin = 30)` refreshes the session
+  first when it is expired or about to expire, hands the new `Session` to the
+  callback so it can be persisted, and returns a client authenticated as that user.
+- `Session::isExpired(int $marginSeconds = 0, ?int $now = null)`.
+- `ClientOptions::withAccessToken()` and `ClientOptions::withHttp()` immutable copies.
+
+### Fixed
+- `PhrityWebSocketConnection::close()` falls back to a normal closure (1000) for a
+  close code outside `0..4999`, the range phrity/websocket 3.8 enforces.
+
 ## [1.0.0] - 2026-06-28
 
 First stable release. The SDK covers Edge Functions, Database (PostgREST), Auth

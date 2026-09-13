@@ -7,6 +7,7 @@ namespace Supabase;
 use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use Supabase\Auth\GoTrueClient;
+use Supabase\Auth\Session;
 use Supabase\Exception\RealtimeException;
 use Supabase\Functions\FunctionsClient;
 use Supabase\Http\HeaderRedaction;
@@ -15,28 +16,18 @@ use Supabase\Postgrest\FilterBuilder;
 use Supabase\Postgrest\PostgrestClient;
 use Supabase\Postgrest\QueryBuilder;
 use Supabase\Realtime\RealtimeClient;
-use Supabase\Realtime\WebSocketConnectionFactory;
 use Supabase\Storage\StorageClient;
 
 final class Client
 {
     private readonly Transport $transport;
 
-    private readonly string $schema;
-
     private readonly string $url;
 
     private readonly string $apiKey;
 
-    private readonly ?WebSocketConnectionFactory $webSocketFactory;
-
-    private readonly float $realtimeHeartbeatInterval;
-
-    private readonly bool $realtimeAutoReconnect;
-
-    private readonly float $realtimeReconnectBaseDelay;
-
-    private readonly float $realtimeReconnectMaxDelay;
+    /** Options with the PSR-18 client and PSR-17 factories already resolved. */
+    private readonly ClientOptions $options;
 
     public function __construct(string $url, #[\SensitiveParameter] string $apiKey, ?ClientOptions $options = null)
     {
@@ -70,18 +61,15 @@ final class Client
 
         $options ??= new ClientOptions();
 
-        $this->url = $url;
-        $this->schema = $options->schema;
-        $this->apiKey = $apiKey;
-        $this->webSocketFactory = $options->webSocketFactory;
-        $this->realtimeHeartbeatInterval = $options->realtimeHeartbeatInterval;
-        $this->realtimeAutoReconnect = $options->realtimeAutoReconnect;
-        $this->realtimeReconnectBaseDelay = $options->realtimeReconnectBaseDelay;
-        $this->realtimeReconnectMaxDelay = $options->realtimeReconnectMaxDelay;
-
         $httpClient = $options->httpClient ?? Psr18ClientDiscovery::find();
         $requestFactory = $options->requestFactory ?? Psr17FactoryDiscovery::findRequestFactory();
         $streamFactory = $options->streamFactory ?? Psr17FactoryDiscovery::findStreamFactory();
+
+        $this->url = $url;
+        $this->apiKey = $apiKey;
+        // Resolve discovery once so siblings built by withAccessToken() share
+        // the same HTTP client and factories.
+        $this->options = $options->withHttp($httpClient, $requestFactory, $streamFactory);
 
         $headers = [
             'apikey' => $apiKey,
@@ -105,6 +93,44 @@ final class Client
         return $this->transport;
     }
 
+    /**
+     * Returns a sibling client whose requests carry the given user JWT as
+     * `Authorization: Bearer`, so Row Level Security applies as that user.
+     * The apikey, HTTP client and every option are kept; null reverts to the
+     * apikey as bearer. This client is left unchanged. As in the constructor,
+     * a custom `Authorization` in ClientOptions::$headers still wins.
+     */
+    public function withAccessToken(#[\SensitiveParameter] ?string $accessToken): self
+    {
+        if ($accessToken !== null && trim($accessToken) === '') {
+            throw new \InvalidArgumentException('The access token must not be empty.');
+        }
+
+        return new self($this->url, $this->apiKey, $this->options->withAccessToken($accessToken));
+    }
+
+    /**
+     * Returns a sibling client authenticated as the session's user. When the
+     * session is expired, or expires within $expiryMargin seconds, it is
+     * refreshed first and the new Session is handed to $onTokenRefreshed so
+     * the caller can persist it. Refresh is proactive only: a token that
+     * expires mid-request is not retried. Throws AuthException when the
+     * refresh token is no longer valid.
+     *
+     * @param null|callable(Session): void $onTokenRefreshed
+     */
+    public function withSession(Session $session, ?callable $onTokenRefreshed = null, int $expiryMargin = 30): self
+    {
+        if ($session->isExpired($expiryMargin)) {
+            $session = $this->auth()->refreshSession($session->refreshToken);
+            if ($onTokenRefreshed !== null) {
+                $onTokenRefreshed($session);
+            }
+        }
+
+        return $this->withAccessToken($session->accessToken);
+    }
+
     private ?GoTrueClient $auth = null;
 
     public function auth(): GoTrueClient
@@ -119,10 +145,10 @@ final class Client
     {
         return [
             'url' => $this->url,
-            'schema' => $this->schema,
+            'schema' => $this->options->schema,
             'apiKey' => HeaderRedaction::REDACTED,
             'transport' => $this->transport,
-            'webSocketFactory' => $this->webSocketFactory,
+            'webSocketFactory' => $this->options->webSocketFactory,
         ];
     }
 
@@ -157,20 +183,21 @@ final class Client
 
     public function realtime(): RealtimeClient
     {
-        if ($this->webSocketFactory === null) {
+        $factory = $this->options->webSocketFactory;
+        if ($factory === null) {
             throw new RealtimeException(
                 'Realtime requires a WebSocketConnectionFactory. Provide one via ClientOptions(webSocketFactory: ...). See the README.'
             );
         }
 
         return $this->realtime ??= new RealtimeClient(
-            $this->webSocketFactory,
+            $factory,
             $this->url,
             $this->apiKey,
-            heartbeatInterval: $this->realtimeHeartbeatInterval,
-            autoReconnect: $this->realtimeAutoReconnect,
-            reconnectBaseDelay: $this->realtimeReconnectBaseDelay,
-            reconnectMaxDelay: $this->realtimeReconnectMaxDelay,
+            heartbeatInterval: $this->options->realtimeHeartbeatInterval,
+            autoReconnect: $this->options->realtimeAutoReconnect,
+            reconnectBaseDelay: $this->options->realtimeReconnectBaseDelay,
+            reconnectMaxDelay: $this->options->realtimeReconnectMaxDelay,
         );
     }
 
@@ -185,7 +212,7 @@ final class Client
 
     public function from(string $table): QueryBuilder
     {
-        return ($this->postgrest ??= new PostgrestClient($this->transport, $this->schema))->from($table);
+        return ($this->postgrest ??= new PostgrestClient($this->transport, $this->options->schema))->from($table);
     }
 
     /**
@@ -193,6 +220,6 @@ final class Client
      */
     public function rpc(string $function, array $params = []): FilterBuilder
     {
-        return ($this->postgrest ??= new PostgrestClient($this->transport, $this->schema))->rpc($function, $params);
+        return ($this->postgrest ??= new PostgrestClient($this->transport, $this->options->schema))->rpc($function, $params);
     }
 }

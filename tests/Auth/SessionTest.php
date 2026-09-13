@@ -49,3 +49,14 @@ test('Session redacts tokens in json_encode output', function () {
         ->and($json)->not->toContain('SECRET_RT')
         ->and($json)->toContain('***redacted***');
 });
+
+test('Session::isExpired honours the margin and treats an unknown expiry as valid', function () {
+    $s = Session::fromArray(['access_token' => 'AT', 'refresh_token' => 'RT', 'expires_at' => 1000, 'user' => ['id' => 'x']]);
+    $noExpiry = Session::fromArray(['access_token' => 'AT', 'refresh_token' => 'RT', 'user' => ['id' => 'x']]);
+
+    expect($s->isExpired(now: 999))->toBeFalse()
+        ->and($s->isExpired(now: 1000))->toBeTrue()
+        ->and($s->isExpired(marginSeconds: 30, now: 969))->toBeFalse()
+        ->and($s->isExpired(marginSeconds: 30, now: 970))->toBeTrue()
+        ->and($noExpiry->isExpired(now: PHP_INT_MAX))->toBeFalse();
+});

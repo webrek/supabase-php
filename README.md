@@ -301,8 +301,6 @@ handshake, adds headers, applies a read timeout on every `receive()` call, and
 auto-responds to WebSocket-level ping frames via phrity's `PingResponder`
 middleware.
 
-> Out of scope for this release: automatic access-token refresh.
-
 ## Auth (GoTrue)
 
 ```php
@@ -328,10 +326,35 @@ $supabase->auth()->resetPasswordForEmail('a@b.com');
 $url = $supabase->auth()->getOAuthSignInUrl('github', ['redirect_to' => 'https://app.test/cb']);
 ```
 
-Sessions are stateless: the SDK never stores or refreshes them automatically — persist
-`accessToken`/`refreshToken` yourself. Tokens are redacted in `var_dump`/`print_r`/`json_encode`
-and in `AuthException` bodies, and `Session` cannot be serialized. (PHP's `var_export()` cannot
-be intercepted — never `var_export()` a `Session`.)
+Sessions are stateless: the SDK never stores them — persist `accessToken`/`refreshToken`
+yourself. `withSession()` (below) refreshes one on demand. Tokens are redacted in
+`var_dump`/`print_r`/`json_encode` and in `AuthException` bodies, and `Session` cannot be
+serialized. (PHP's `var_export()` cannot be intercepted — never `var_export()` a `Session`.)
+
+### Acting as a user (Row Level Security)
+
+On the server every request arrives with a different user's JWT. Bind it to a
+sibling client instead of constructing a new one: the apikey, HTTP client and
+all options are shared, only the bearer changes, and the original client is
+untouched.
+
+```php
+use Supabase\Auth\Session;
+
+// From a JWT you already hold (cookie, Authorization header, ...)
+$asUser = $supabase->withAccessToken($jwt);
+$todos  = $asUser->from('todos')->select()->execute();   // RLS applies as that user
+
+// From a Session — refreshed first if it is expired or expires within 30s
+$asUser = $supabase->withSession($session, onTokenRefreshed: function (Session $fresh): void {
+    // persist $fresh->accessToken / $fresh->refreshToken (cookie, cache, ...)
+});
+```
+
+`withSession()` refreshes proactively, before the first request, and only when
+needed; it does not retry a request whose token expired mid-flight. A refresh
+token that is no longer valid throws `AuthException`. `withAccessToken(null)`
+returns a client that uses the apikey as bearer again.
 
 ### Admin API (service_role)
 

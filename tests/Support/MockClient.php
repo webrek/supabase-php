@@ -12,6 +12,9 @@ final class MockClient implements ClientInterface
 {
     public ?RequestInterface $lastRequest = null;
 
+    /** @var list<RequestInterface> every request received, in order */
+    public array $requests = [];
+
     /** @var list<ResponseInterface> */
     private array $queue = [];
 
@@ -23,6 +26,7 @@ final class MockClient implements ClientInterface
     public function sendRequest(RequestInterface $request): ResponseInterface
     {
         $this->lastRequest = $request;
+        $this->requests[] = $request;
 
         return array_shift($this->queue)
             ?? throw new \RuntimeException('No queued response in MockClient.');

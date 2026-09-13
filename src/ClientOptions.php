@@ -31,6 +31,52 @@ final readonly class ClientOptions implements \JsonSerializable
     }
 
     /**
+     * Returns a copy with the PSR-18 client and PSR-17 factories filled in.
+     * The Client resolves discovery once and keeps the result here so that
+     * siblings built by Client::withAccessToken() share the same instances.
+     */
+    public function withHttp(
+        ClientInterface $httpClient,
+        RequestFactoryInterface $requestFactory,
+        StreamFactoryInterface $streamFactory,
+    ): self {
+        return new self(
+            httpClient: $httpClient,
+            requestFactory: $requestFactory,
+            streamFactory: $streamFactory,
+            headers: $this->headers,
+            schema: $this->schema,
+            accessToken: $this->accessToken,
+            webSocketFactory: $this->webSocketFactory,
+            realtimeHeartbeatInterval: $this->realtimeHeartbeatInterval,
+            realtimeAutoReconnect: $this->realtimeAutoReconnect,
+            realtimeReconnectBaseDelay: $this->realtimeReconnectBaseDelay,
+            realtimeReconnectMaxDelay: $this->realtimeReconnectMaxDelay,
+        );
+    }
+
+    /**
+     * Returns a copy with a different access token; null falls back to the
+     * apikey as bearer. Everything else is kept.
+     */
+    public function withAccessToken(#[\SensitiveParameter] ?string $accessToken): self
+    {
+        return new self(
+            httpClient: $this->httpClient,
+            requestFactory: $this->requestFactory,
+            streamFactory: $this->streamFactory,
+            headers: $this->headers,
+            schema: $this->schema,
+            accessToken: $accessToken,
+            webSocketFactory: $this->webSocketFactory,
+            realtimeHeartbeatInterval: $this->realtimeHeartbeatInterval,
+            realtimeAutoReconnect: $this->realtimeAutoReconnect,
+            realtimeReconnectBaseDelay: $this->realtimeReconnectBaseDelay,
+            realtimeReconnectMaxDelay: $this->realtimeReconnectMaxDelay,
+        );
+    }
+
+    /**
      * Returns debug information with the access token and any sensitive headers
      * redacted so that var_dump() / print_r() / crash reporters cannot expose
      * live credentials.
