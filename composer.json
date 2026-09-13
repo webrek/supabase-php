@@ -19,7 +19,7 @@
         "phpstan/phpstan": "^2.0",
         "laravel/pint": "^1.18",
         "nyholm/psr7": "^1.8",
-        "guzzlehttp/guzzle": "^7.8",
+        "guzzlehttp/guzzle": "^7.8 || ^8.0",
         "phrity/websocket": "^3.0"
     },
     "autoload": {
