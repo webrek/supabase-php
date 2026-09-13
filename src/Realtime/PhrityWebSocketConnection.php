@@ -133,8 +133,13 @@ final class PhrityWebSocketConnection implements WebSocketConnection
             return;
         }
 
+        // RFC 6455 §7.4 only allows close codes the library types as
+        // int<0, 4999>; anything else cannot go on the wire, so fall back to a
+        // normal closure.
+        $status = $code >= 0 && $code <= 4999 ? $code : 1000;
+
         try {
-            $this->client->close($code, $reason);
+            $this->client->close($status, $reason);
         } catch (\Throwable) {
             // best-effort: send the close frame if possible
         } finally {

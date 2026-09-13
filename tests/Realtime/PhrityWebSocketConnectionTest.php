@@ -201,6 +201,17 @@ test('close() sends a Close frame (via send) and disconnects the phrity client',
         ->and($spy->connected)->toBeFalse(); // disconnect() was called
 });
 
+test('close() falls back to a normal closure for an out-of-range code', function () {
+    $spy = new WebSocketClientSpy();
+    $conn = connWithSpy($spy);
+
+    $conn->close(70000, 'out of range');
+
+    $frame = $spy->sentMessages[0];
+    assert($frame instanceof Close);
+    expect($frame->getCloseStatus())->toBe(1000);
+});
+
 test('close() makes isConnected() return false', function () {
     $spy = new WebSocketClientSpy();
     $conn = connWithSpy($spy);
