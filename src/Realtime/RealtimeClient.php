@@ -7,6 +7,7 @@ namespace Supabase\Realtime;
 use Supabase\Exception\RealtimeException;
 use Supabase\Exception\SupabaseException;
 use Supabase\Http\HeaderRedaction;
+use Supabase\Http\Transport;
 
 /**
  * Realtime client over the Phoenix channels protocol. Owns the WebSocket
@@ -34,26 +35,40 @@ final class RealtimeClient
 
     private readonly Serializer $serializer;
 
+    /**
+     * @param WebSocketConnectionFactory|null $factory required for the WebSocket
+     *        API (connect / channels); broadcast() over HTTP works without it.
+     * @param Transport|null $transport required for broadcast() over HTTP.
+     * @param string|null $accessToken user JWT sent with channel joins so
+     *        private channels are authorised as that user.
+     */
     public function __construct(
-        private readonly WebSocketConnectionFactory $factory,
+        private readonly ?WebSocketConnectionFactory $factory,
         private readonly string $url,
         #[\SensitiveParameter] private readonly string $apiKey,
         private readonly float $heartbeatInterval = 30.0,
         private readonly bool $autoReconnect = false,
         private readonly float $reconnectBaseDelay = 1.0,
         private readonly float $reconnectMaxDelay = 30.0,
+        private readonly ?Transport $transport = null,
+        #[\SensitiveParameter] private ?string $accessToken = null,
     ) {
         $this->serializer = new Serializer();
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @param array<string, mixed> $params `private` (bool), `presence_key`,
+     *        `access_token` (defaults to the client's token)
      */
     public function channel(string $name, array $params = []): Channel
     {
         $topic = str_starts_with($name, 'realtime:') ? $name : 'realtime:' . $name;
         if (isset($this->channels[$topic])) {
             return $this->channels[$topic];
+        }
+
+        if (! array_key_exists('access_token', $params) && $this->accessToken !== null) {
+            $params['access_token'] = $this->accessToken;
         }
 
         $pusher = function (string $event, array $payload, bool $isJoin) use ($topic): void {
@@ -65,6 +80,59 @@ final class RealtimeClient
         };
 
         return $this->channels[$topic] = new Channel($topic, $pusher, $params);
+    }
+
+    /**
+     * Sends a broadcast message over HTTP (POST /realtime/v1/api/broadcast)
+     * without opening a WebSocket — suited to web requests. Subscribers of
+     * the topic receive it as a regular broadcast event. The request carries
+     * the client's bearer, so a user-bound client is authorised as that user.
+     *
+     * @param array<mixed> $payload
+     */
+    public function broadcast(string $topic, string $event, array $payload, bool $private = false): void
+    {
+        if ($this->transport === null) {
+            throw new RealtimeException(
+                'Realtime broadcast over HTTP needs the Transport; obtain the RealtimeClient through Client::realtime().'
+            );
+        }
+
+        $topic = str_starts_with($topic, 'realtime:') ? substr($topic, strlen('realtime:')) : $topic;
+        if (trim($topic) === '' || trim($event) === '') {
+            throw new \InvalidArgumentException('Broadcast topic and event must not be empty.');
+        }
+
+        $response = $this->transport->request('POST', '/realtime/v1/api/broadcast', [
+            'body' => ['messages' => [[
+                'topic' => $topic,
+                'event' => $event,
+                'payload' => $payload === [] ? new \stdClass() : $payload,
+                'private' => $private,
+            ]]],
+        ]);
+
+        if ($response->getStatusCode() >= 400) {
+            throw RealtimeException::fromResponse($response);
+        }
+    }
+
+    /**
+     * Replaces the user token: later joins carry it, and channels that are
+     * already joined receive an access_token event so the server re-evaluates
+     * their authorisation without a reconnect.
+     */
+    public function setAuth(#[\SensitiveParameter] ?string $accessToken): void
+    {
+        $this->accessToken = $accessToken;
+        $connected = $this->conn?->isConnected() ?? false;
+
+        foreach ($this->channels as $channel) {
+            $channel->setAccessToken($accessToken);
+            if ($accessToken !== null && $connected && $channel->state() === 'joined') {
+                $channel->pushAccessToken();
+            }
+        }
     }
 
     public function connect(): void
@@ -81,7 +149,7 @@ final class RealtimeClient
             }
         }
 
-        $conn = $this->factory->create();
+        $conn = $this->requireFactory()->create();
         try {
             $conn->connect($this->buildUrl(), ['apikey' => $this->apiKey]);
         } catch (\Throwable $e) {
@@ -168,7 +236,7 @@ final class RealtimeClient
             }
         }
 
-        $conn = $this->factory->create();
+        $conn = $this->requireFactory()->create();
         $conn->connect($this->buildUrl(), ['apikey' => $this->apiKey]);
         $this->conn = $conn;
         $this->lastHeartbeat = $this->now();
@@ -217,6 +285,7 @@ final class RealtimeClient
         return [
             'url' => $this->url,
             'apiKey' => HeaderRedaction::REDACTED,
+            'accessToken' => $this->accessToken === null ? null : HeaderRedaction::REDACTED,
             'connected' => $this->conn?->isConnected() ?? false,
             'channels' => array_keys($this->channels),
             'heartbeatInterval' => $this->heartbeatInterval,
@@ -296,6 +365,13 @@ final class RealtimeClient
     private function now(): float
     {
         return microtime(true);
+    }
+
+    private function requireFactory(): WebSocketConnectionFactory
+    {
+        return $this->factory ?? throw new RealtimeException(
+            'Realtime requires a WebSocketConnectionFactory. Provide one via ClientOptions(webSocketFactory: ...). See the README.'
+        );
     }
 
     private function requireConn(): WebSocketConnection

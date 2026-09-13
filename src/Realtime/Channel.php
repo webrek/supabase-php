@@ -46,9 +46,15 @@ final class Channel
     /** @var array<mixed>|null last track() payload, re-sent after a re-join */
     private ?array $lastTrackPayload = null;
 
+    /** Joins as a private channel (authorised by Realtime RLS policies). */
+    private readonly bool $private;
+
+    /** User JWT sent with the join; updated by RealtimeClient::setAuth(). */
+    private ?string $accessToken;
+
     /**
      * @param \Closure(string, array<mixed>, bool): void $pusher fn(event, payload, isJoin)
-     * @param array<string, mixed> $params
+     * @param array<string, mixed> $params `private` (bool), `presence_key`, `access_token`
      */
     public function __construct(
         public readonly string $topic,
@@ -56,6 +62,27 @@ final class Channel
         private readonly array $params = [],
     ) {
         $this->presence = new Presence();
+        $this->private = ($params['private'] ?? false) === true;
+        $this->accessToken = isset($params['access_token']) && is_string($params['access_token']) ? $params['access_token'] : null;
+    }
+
+    public function isPrivate(): bool
+    {
+        return $this->private;
+    }
+
+    /** Stores the token for the next join; see RealtimeClient::setAuth(). */
+    public function setAccessToken(#[\SensitiveParameter] ?string $accessToken): void
+    {
+        $this->accessToken = $accessToken;
+    }
+
+    /** Sends the current token to the server so a joined channel is re-authorised. */
+    public function pushAccessToken(): void
+    {
+        if ($this->accessToken !== null) {
+            ($this->pusher)('access_token', ['access_token' => $this->accessToken], false);
+        }
     }
 
     public function onPostgresChanges(string $event, string $schema, string $table, ?string $filter, callable $callback): self
@@ -175,12 +202,12 @@ final class Channel
                     'enabled' => $this->presenceEnabled,
                 ],
                 'postgres_changes' => $pg,
-                'private' => false,
+                'private' => $this->private,
             ],
         ];
 
-        if (isset($this->params['access_token']) && is_string($this->params['access_token'])) {
-            $payload['access_token'] = $this->params['access_token'];
+        if ($this->accessToken !== null) {
+            $payload['access_token'] = $this->accessToken;
         }
 
         return $payload;

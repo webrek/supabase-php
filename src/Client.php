@@ -8,7 +8,6 @@ use Http\Discovery\Psr17FactoryDiscovery;
 use Http\Discovery\Psr18ClientDiscovery;
 use Supabase\Auth\GoTrueClient;
 use Supabase\Auth\Session;
-use Supabase\Exception\RealtimeException;
 use Supabase\Functions\FunctionsClient;
 use Supabase\Http\HeaderRedaction;
 use Supabase\Http\Transport;
@@ -189,21 +188,18 @@ final class Client
 
     public function realtime(): RealtimeClient
     {
-        $factory = $this->options->webSocketFactory;
-        if ($factory === null) {
-            throw new RealtimeException(
-                'Realtime requires a WebSocketConnectionFactory. Provide one via ClientOptions(webSocketFactory: ...). See the README.'
-            );
-        }
-
+        // The WebSocket factory is only needed for connect(); broadcast() over
+        // HTTP works without one, so this never throws here.
         return $this->realtime ??= new RealtimeClient(
-            $factory,
+            $this->options->webSocketFactory,
             $this->url,
             $this->apiKey,
             heartbeatInterval: $this->options->realtimeHeartbeatInterval,
             autoReconnect: $this->options->realtimeAutoReconnect,
             reconnectBaseDelay: $this->options->realtimeReconnectBaseDelay,
             reconnectMaxDelay: $this->options->realtimeReconnectMaxDelay,
+            transport: $this->transport,
+            accessToken: $this->options->accessToken,
         );
     }
 

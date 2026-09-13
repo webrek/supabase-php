@@ -29,9 +29,22 @@ backward-compatible features and patch releases contain fixes.
 - `Supabase\Auth\Claims`, `Supabase\Auth\Jwks` (with `clearProcessCache()`), and the
   internal `Supabase\Auth\JwtVerifier`.
 - `ClientOptions`: `jwksCache`, `jwksCacheTtl`, `jwtSecret` (redacted in dumps).
+- **Realtime broadcast over HTTP**: `RealtimeClient::broadcast(string $topic, string $event,
+  array $payload, bool $private = false)` posts to `/realtime/v1/api/broadcast`, so a web
+  request can notify subscribers without opening a WebSocket. Authorised as the client's
+  bearer (the user's JWT on a `withAccessToken()` client).
+- **Private channels**: `channel($name, ['private' => true])` joins with `private: true`;
+  the client's access token is sent with the join automatically (an explicit `access_token`
+  param still wins). `Channel::isPrivate()`, `Channel::setAccessToken()`, `Channel::pushAccessToken()`.
+- `RealtimeClient::setAuth(?string $jwt)` rotates the user token in place: joined channels
+  receive an `access_token` event and later joins carry the new token.
 
 ### Changed
 - New requirements: `psr/simple-cache ^3.0` (interface only) and `ext-openssl`.
+- `Client::realtime()` no longer throws when no `webSocketFactory` is configured — the
+  factory is only required by `connect()`, so `broadcast()` works without one.
+  `RealtimeClient`'s first constructor argument is now nullable and it accepts
+  `transport` and `accessToken`.
 
 ### Fixed
 - `PhrityWebSocketConnection::close()` falls back to a normal closure (1000) for a

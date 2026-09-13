@@ -168,6 +168,39 @@ $realtime->disconnect();
 Prefer your own loop? Call `poll(float $timeout)` repeatedly instead of `run()`,
 and `stop()` to break out of `run()` from inside a callback.
 
+### Broadcast from a web request (no WebSocket)
+
+`broadcast()` posts a message through the Realtime REST endpoint, so an ordinary
+HTTP request can notify connected clients without holding a socket open — no
+`WebSocketConnectionFactory` needed:
+
+```php
+$supabase->realtime()->broadcast('room-1', 'order-updated', ['id' => 42]);
+$supabase->realtime()->broadcast('room-1', 'order-updated', ['id' => 42], private: true);
+```
+
+Subscribers receive it as a regular broadcast event. The request carries the
+client's bearer, so `withAccessToken($jwt)->realtime()->broadcast(...)` is
+authorised as that user.
+
+### Private channels and user tokens
+
+Private channels are authorised by Realtime RLS policies on `realtime.messages`.
+Pass `private: true` and act as a user: the client's access token (see
+`withAccessToken()`) is sent with the join automatically.
+
+```php
+$realtime = $supabase->withAccessToken($jwt)->realtime();
+$realtime->connect();
+$realtime->channel('room-1', ['private' => true])
+    ->onBroadcast('*', function (array $message): void { /* ... */ })
+    ->subscribe();
+
+// Long-running worker: rotate the token without reconnecting. Joined channels
+// receive an access_token event; later joins carry the new token.
+$realtime->setAuth($freshJwt);
+```
+
 ### Presence
 
 Track which clients are online and get notified when they join or leave. Register

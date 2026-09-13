@@ -19,10 +19,12 @@ final class JwtFixtures
         \assert($key !== false);
         $ec = self::details($key, 'ec');
 
+        // OpenSSL returns the coordinates as minimal big-endian integers; RFC 7518
+        // §6.2.1 requires the full 32-byte field width.
         $jwk = [
             'kty' => 'EC', 'crv' => 'P-256', 'alg' => 'ES256', 'use' => 'sig', 'kid' => $kid,
-            'x' => self::b64url(self::field($ec, 'x')),
-            'y' => self::b64url(self::field($ec, 'y')),
+            'x' => self::b64url(str_pad(self::field($ec, 'x'), 32, "\x00", STR_PAD_LEFT)),
+            'y' => self::b64url(str_pad(self::field($ec, 'y'), 32, "\x00", STR_PAD_LEFT)),
         ];
         $sign = static function (string $input) use ($key): string {
             openssl_sign($input, $der, $key, OPENSSL_ALGO_SHA256);

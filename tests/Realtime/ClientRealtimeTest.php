@@ -12,9 +12,11 @@ use Supabase\Tests\Support\MockClient;
 use Supabase\Tests\Support\MockWebSocketConnection;
 use Supabase\Tests\Support\MockWebSocketConnectionFactory;
 
-test('realtime() throws when no WebSocketConnectionFactory is configured', function () {
-    expect(fn () => (new Client('https://demo.supabase.co', 'ANON', new ClientOptions(httpClient: new MockClient())))->realtime())
-        ->toThrow(RealtimeException::class);
+test('realtime() works without a WebSocketConnectionFactory but connect() requires one', function () {
+    $rt = (new Client('https://demo.supabase.co', 'ANON', new ClientOptions(httpClient: new MockClient())))->realtime();
+
+    expect($rt)->toBeInstanceOf(RealtimeClient::class)
+        ->and(fn () => $rt->connect())->toThrow(RealtimeException::class, 'WebSocketConnectionFactory');
 });
 
 test('realtime() returns a memoized RealtimeClient when a factory is provided', function () {
