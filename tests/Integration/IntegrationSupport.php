@@ -6,9 +6,12 @@ namespace Supabase\Tests\Integration;
 
 use GuzzleHttp\Client as GuzzleClient;
 use Nyholm\Psr7\Factory\Psr17Factory;
+use Supabase\Auth\Session;
 use Supabase\Client;
 use Supabase\ClientOptions;
+use Supabase\Realtime\Channel;
 use Supabase\Realtime\PhrityWebSocketConnectionFactory;
+use Supabase\Realtime\RealtimeClient;
 
 /**
  * Shared helpers for integration tests.
@@ -48,7 +51,7 @@ final class IntegrationSupport
      * Suitable for Auth signup/signin flows that must go through GoTrue with
      * public-facing credentials, as a real user would.
      */
-    public static function authClient(): Client
+    public static function authClient(?string $jwtSecret = null): Client
     {
         $url = getenv('SUPABASE_URL');
         $key = getenv('SUPABASE_ANON_KEY');
@@ -62,7 +65,84 @@ final class IntegrationSupport
             httpClient: new GuzzleClient(['allow_redirects' => false, 'timeout' => 10.0]),
             requestFactory: $factory,
             streamFactory: $factory,
+            jwtSecret: $jwtSecret,
         ));
+    }
+
+    /** The stack's legacy HS256 secret (SUPABASE_JWT_SECRET), when exported. */
+    public static function jwtSecret(): ?string
+    {
+        $secret = getenv('SUPABASE_JWT_SECRET');
+
+        return is_string($secret) && $secret !== '' ? $secret : null;
+    }
+
+    /** Base URL of the local mail catcher (SUPABASE_MAIL_URL, Mailpit), when exported. */
+    public static function mailUrl(): ?string
+    {
+        $url = getenv('SUPABASE_MAIL_URL');
+
+        return is_string($url) && $url !== '' ? rtrim($url, '/') : null;
+    }
+
+    /**
+     * Signs up a fresh user through GoTrue and returns its Session. The CLI
+     * stack has email confirmation disabled, so signUp returns a Session.
+     */
+    public static function signUp(Client $client): Session
+    {
+        $session = $client->auth()->signUp(uniqid('itest_') . '@example.com', 'Testing1234!');
+        if ($session === null) {
+            throw new \RuntimeException('signUp returned no Session: this stack requires email confirmation.');
+        }
+
+        return $session;
+    }
+
+    /**
+     * Pumps the Realtime loop until the channel leaves the "joining" state or
+     * the timeout elapses, and returns the state it ended in.
+     */
+    public static function waitForJoin(RealtimeClient $rt, Channel $channel, float $timeout = 10.0): string
+    {
+        $deadline = microtime(true) + $timeout;
+        while ($channel->state() === 'joining' && microtime(true) < $deadline) {
+            $rt->poll(0.5);
+        }
+
+        return $channel->state();
+    }
+
+    /**
+     * Finds the first GoTrue /auth/v1/verify link in the latest Mailpit message
+     * sent to $email, polling until $timeout. Returns null when none arrives.
+     */
+    public static function waitForVerifyLink(string $mailUrl, string $email, float $timeout = 15.0): ?string
+    {
+        $http = new GuzzleClient(['timeout' => 5.0, 'http_errors' => false]);
+        $deadline = microtime(true) + $timeout;
+
+        while (microtime(true) < $deadline) {
+            $search = $http->get($mailUrl . '/api/v1/search?query=' . rawurlencode('to:' . $email));
+            $list = json_decode((string) $search->getBody(), true);
+            $messages = is_array($list) && isset($list['messages']) && is_array($list['messages']) ? $list['messages'] : [];
+            $first = $messages[0] ?? null;
+            $id = is_array($first) && isset($first['ID']) && is_string($first['ID']) ? $first['ID'] : null;
+
+            if ($id !== null) {
+                $message = json_decode((string) $http->get($mailUrl . '/api/v1/message/' . rawurlencode($id))->getBody(), true);
+                $bodies = is_array($message) ? [$message['Text'] ?? '', $message['HTML'] ?? ''] : [];
+                foreach ($bodies as $body) {
+                    if (is_string($body) && preg_match('#https?://[^\s"\'<>]+/auth/v1/verify[^\s"\'<>]*#', $body, $m) === 1) {
+                        return html_entity_decode($m[0], ENT_QUOTES | ENT_HTML5);
+                    }
+                }
+            }
+
+            usleep(500_000);
+        }
+
+        return null;
     }
 
     /**

@@ -44,14 +44,18 @@ jobs:
       - name: Export Supabase connection env vars
         run: |
           # `supabase status -o env` prints KEY=VALUE pairs including:
-          #   API_URL, ANON_KEY, SERVICE_ROLE_KEY, DB_URL, STUDIO_URL, …
-          # We eval them into the current shell, then write the three we need
+          #   API_URL, ANON_KEY, SERVICE_ROLE_KEY, JWT_SECRET, MAILPIT_URL, …
+          # We eval them into the current shell, then write the ones we need
           # to $GITHUB_ENV so all subsequent steps can read them.
           eval "$(supabase status -o env)"
           {
             echo "SUPABASE_URL=${API_URL}"
             echo "SUPABASE_ANON_KEY=${ANON_KEY}"
             echo "SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}"
+            # Legacy HS256 secret: lets the JWKS test verify locally as well.
+            echo "SUPABASE_JWT_SECRET=${JWT_SECRET}"
+            # Mailpit: the PKCE test reads the magic-link email from it.
+            echo "SUPABASE_MAIL_URL=${MAILPIT_URL}"
           } >> "$GITHUB_ENV"
 
       - name: Run integration tests

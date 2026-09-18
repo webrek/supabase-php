@@ -69,42 +69,56 @@ rm -rf vendor composer.lock && composer install && composer test
 
 ## Running integration tests
 
-Integration tests exercise the HTTP modules (Database, Auth, Storage) against a
-real Supabase stack.  They are **automatically skipped** when the required env
-vars are absent, so `composer test` remains green in environments without a
-running stack.
+Integration tests exercise every module against a real Supabase stack running
+in Docker: Database (PostgREST, including RLS as a signed-in user), Auth (GoTrue,
+including local JWT verification and the PKCE magic-link flow through the mail
+catcher), Storage, and Realtime (postgres changes, presence, REST broadcast and
+private channels over a real WebSocket).  They are **automatically skipped**
+when the required env vars are absent, so `composer test` remains green in
+environments without a running stack.
 
 ### Requirements
 
+- Docker (Docker Desktop or OrbStack) running
 - [Supabase CLI](https://supabase.com/docs/guides/cli) installed locally
-- Three env vars exported in your shell:
+  (`brew install supabase/tap/supabase`)
+- Env vars exported in your shell — `supabase status -o env` prints them all:
 
 ```bash
-export SUPABASE_URL=http://localhost:54321
-export SUPABASE_ANON_KEY=<anon key>
-export SUPABASE_SERVICE_ROLE_KEY=<service role key>
+eval "$(supabase status -o env)"
+export SUPABASE_URL="$API_URL"
+export SUPABASE_ANON_KEY="$ANON_KEY"
+export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+export SUPABASE_JWT_SECRET="$JWT_SECRET"      # optional: local HS256 verification in the JWKS test
+export SUPABASE_MAIL_URL="$MAILPIT_URL"       # optional: the PKCE test reads the magic link from Mailpit
 ```
+
+Without the two optional vars those assertions are skipped, nothing fails.
 
 ### Starting the local stack
 
 ```bash
-# First time — generate config.toml and apply migrations
+# First time — generate config.toml (not committed) and apply migrations.
+# The first start pulls the Supabase images (a few GB).
 supabase init
 supabase start
 
-# Print the connection keys (copy them into the env vars above)
-supabase status
+# After changing anything under supabase/migrations/
+supabase db reset
 ```
 
-The migration at `supabase/migrations/20260628000001_integration.sql` creates the
-`public.integration_items` table used by the database tests.  It is applied
-automatically by `supabase start`.
+The migrations under `supabase/migrations/` are applied automatically by
+`supabase start`: `20260628000001_integration.sql` creates
+`public.integration_items` (database and postgres-changes tests) and
+`20260917000001_user_context_and_private_channels.sql` creates
+`public.private_notes` behind per-user RLS plus the `realtime.messages` policies
+that authorise private channels for authenticated users only.
 
 ### Running the tests
 
 ```bash
 # Integration suite only (requires the stack to be running)
-vendor/bin/pest tests/Integration
+composer test:integration
 
 # Full suite — integration tests are skipped when SUPABASE_URL is unset
 composer test
