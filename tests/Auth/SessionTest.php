@@ -60,3 +60,38 @@ test('Session::isExpired honours the margin and treats an unknown expiry as vali
         ->and($s->isExpired(marginSeconds: 30, now: 970))->toBeTrue()
         ->and($noExpiry->isExpired(now: PHP_INT_MAX))->toBeFalse();
 });
+
+test('Session::fromArray falls back safely on malformed or missing fields', function () {
+    $s = Session::fromArray([
+        'access_token' => 123,
+        'refresh_token' => null,
+        'expires_in' => '3600',
+        'expires_at' => 'soon',
+        'token_type' => ['bearer'],
+        'user' => 'not-an-object',
+    ]);
+
+    expect($s->accessToken)->toBe('')
+        ->and($s->refreshToken)->toBe('')
+        ->and($s->expiresIn)->toBe(3600)
+        ->and($s->expiresAt)->toBeNull()
+        ->and($s->tokenType)->toBe('bearer')
+        ->and($s->user->id)->toBe('')
+        ->and(Session::fromArray([])->accessToken)->toBe('');
+});
+
+test('Session::__debugInfo exposes every non-secret field and redacts both tokens', function () {
+    $s = Session::fromArray([
+        'access_token' => 'AT', 'refresh_token' => 'RT', 'expires_in' => 60, 'expires_at' => 1000,
+        'token_type' => 'bearer', 'user' => ['id' => 'u1'],
+    ]);
+
+    $info = $s->__debugInfo();
+    expect(array_keys($info))->toBe(['accessToken', 'refreshToken', 'expiresIn', 'expiresAt', 'tokenType', 'user'])
+        ->and($info['accessToken'])->toBe('***redacted***')
+        ->and($info['refreshToken'])->toBe('***redacted***')
+        ->and($info['expiresIn'])->toBe(60)
+        ->and($info['expiresAt'])->toBe(1000)
+        ->and($info['tokenType'])->toBe('bearer')
+        ->and($info['user'])->toBe($s->user);
+});

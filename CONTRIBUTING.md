@@ -67,6 +67,16 @@ rm -rf vendor composer.lock && composer install && composer test
 4. Do not introduce backward-incompatible changes to the public API without
    prior discussion.
 
+## Mutation testing
+
+`composer mutate` runs Pest's mutation testing over `src/` (needs PCOV or
+Xdebug) and fails below the floor set by `--min` in the script. The floor is a
+ratchet: when the score goes up, raise `--min` in `composer.json` in the same
+PR; never lower it. Keep `--everything`: code without any covering test counts
+against the score on purpose. Mutants that only survive because OpenSSL
+tolerates non-minimal DER, or that flip a default value nobody should assert,
+are not worth a test.
+
 ## Running integration tests
 
 Integration tests exercise every module against a real Supabase stack running
