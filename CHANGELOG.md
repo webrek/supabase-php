@@ -9,6 +9,13 @@ backward-compatible features and patch releases contain fixes.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-19
+
+Server-side parity release: act as a user per request, verify tokens locally,
+finish OAuth from PHP, and reach Realtime from a plain web request. Every
+module is now exercised end-to-end against a real Supabase stack in CI, the
+suite runs on PHP 8.3–8.5, and a mutation-score floor guards test quality.
+
 ### Added
 - **Per-request user context**: `Client::withAccessToken(?string $jwt)` returns a
   sibling client that authenticates as the given user (`Authorization: Bearer <jwt>`)
@@ -192,7 +199,8 @@ stack in CI.
   and a typed `Supabase\Exception\*` hierarchy.
 - **Edge Functions** module. `Client::functions()` → `FunctionsClient::invoke()`.
 
-[Unreleased]: https://github.com/webrek/supabase-php/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/webrek/supabase-php/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/webrek/supabase-php/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/webrek/supabase-php/compare/v0.5.2...v1.0.0
 [0.5.2]: https://github.com/webrek/supabase-php/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/webrek/supabase-php/compare/v0.5.0...v0.5.1
