@@ -11,13 +11,14 @@ namespace Supabase\Tests\Support;
 final class JwtFixtures
 {
     /**
-     * @return array{jwk: array<string, mixed>, sign: callable(string): string}
+     * @return array{jwk: array<string, mixed>, sign: callable(string): string, publicPem: string}
      */
     public static function es256(string $kid = 'key-es'): array
     {
         $key = openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]);
         \assert($key !== false);
         $ec = self::details($key, 'ec');
+        $publicPem = self::publicPem($key);
 
         // OpenSSL returns the coordinates as minimal big-endian integers; RFC 7518
         // §6.2.1 requires the full 32-byte field width.
@@ -33,7 +34,7 @@ final class JwtFixtures
             return self::derSignatureToRaw($der);
         };
 
-        return ['jwk' => $jwk, 'sign' => $sign];
+        return ['jwk' => $jwk, 'sign' => $sign, 'publicPem' => $publicPem];
     }
 
     /**
@@ -106,6 +107,15 @@ final class JwtFixtures
     public static function b64url(string $bin): string
     {
         return rtrim(strtr(base64_encode($bin), '+/', '-_'), '=');
+    }
+
+    /** The public half as PEM — what an attacker can derive from the published JWKS. */
+    private static function publicPem(\OpenSSLAsymmetricKey $key): string
+    {
+        $details = openssl_pkey_get_details($key);
+        \assert($details !== false && is_string($details['key']));
+
+        return $details['key'];
     }
 
     /**
