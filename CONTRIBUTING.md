@@ -117,6 +117,18 @@ supabase start
 supabase db reset
 ```
 
+The generated `config.toml` caps outgoing auth emails at 2 per hour
+(`[auth.rate_limit] email_sent`); the suite sends several per run (magic link,
+recovery, invite, PKCE), so raise it before starting — CI does the same:
+
+```bash
+sed -i '' 's/^email_sent = 2$/email_sent = 1000/' supabase/config.toml   # macOS; drop '' on Linux
+```
+
+Edge Functions under `supabase/functions/` are served by the stack's
+edge-runtime; a function added while the stack is running is only picked up
+after `supabase stop && supabase start`.
+
 The migrations under `supabase/migrations/` are applied automatically by
 `supabase start`: `20260628000001_integration.sql` creates
 `public.integration_items` (database and postgres-changes tests) and

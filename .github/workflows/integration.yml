@@ -39,6 +39,9 @@ jobs:
           # migration checked into the repository is preserved and will be applied
           # by `supabase start`.
           supabase init --force
+          # The generated config caps outgoing auth emails at 2 per hour; the
+          # suite sends several (magic link, recovery, invite, PKCE) per run.
+          sed -i 's/^email_sent = 2$/email_sent = 1000/' supabase/config.toml
           supabase start
 
       - name: Export Supabase connection env vars

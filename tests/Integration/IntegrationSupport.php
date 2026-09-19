@@ -114,10 +114,12 @@ final class IntegrationSupport
     }
 
     /**
-     * Finds the first GoTrue /auth/v1/verify link in the latest Mailpit message
-     * sent to $email, polling until $timeout. Returns null when none arrives.
+     * Finds a GoTrue /auth/v1/verify link in the Mailpit messages sent to
+     * $email, polling until $timeout. With $type (magiclink, recovery, invite,
+     * ...) only a link of that verification type counts, so a test can wait for
+     * the second email to a mailbox. Returns null when none arrives.
      */
-    public static function waitForVerifyLink(string $mailUrl, string $email, float $timeout = 15.0): ?string
+    public static function waitForVerifyLink(string $mailUrl, string $email, float $timeout = 15.0, ?string $type = null): ?string
     {
         $http = new GuzzleClient(['timeout' => 5.0, 'http_errors' => false]);
         $deadline = microtime(true) + $timeout;
@@ -126,15 +128,21 @@ final class IntegrationSupport
             $search = $http->get($mailUrl . '/api/v1/search?query=' . rawurlencode('to:' . $email));
             $list = json_decode((string) $search->getBody(), true);
             $messages = is_array($list) && isset($list['messages']) && is_array($list['messages']) ? $list['messages'] : [];
-            $first = $messages[0] ?? null;
-            $id = is_array($first) && isset($first['ID']) && is_string($first['ID']) ? $first['ID'] : null;
 
-            if ($id !== null) {
+            foreach ($messages as $summary) {
+                $id = is_array($summary) && isset($summary['ID']) && is_string($summary['ID']) ? $summary['ID'] : null;
+                if ($id === null) {
+                    continue;
+                }
                 $message = json_decode((string) $http->get($mailUrl . '/api/v1/message/' . rawurlencode($id))->getBody(), true);
                 $bodies = is_array($message) ? [$message['Text'] ?? '', $message['HTML'] ?? ''] : [];
                 foreach ($bodies as $body) {
-                    if (is_string($body) && preg_match('#https?://[^\s"\'<>]+/auth/v1/verify[^\s"\'<>]*#', $body, $m) === 1) {
-                        return html_entity_decode($m[0], ENT_QUOTES | ENT_HTML5);
+                    if (! is_string($body) || preg_match('#https?://[^\s"\'<>]+/auth/v1/verify[^\s"\'<>]*#', $body, $m) !== 1) {
+                        continue;
+                    }
+                    $link = html_entity_decode($m[0], ENT_QUOTES | ENT_HTML5);
+                    if ($type === null || str_contains($link, 'type=' . $type)) {
+                        return $link;
                     }
                 }
             }
