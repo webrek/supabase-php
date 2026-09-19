@@ -195,14 +195,15 @@ final class JwtVerifier
         return self::derSequence(self::derInteger(substr($raw, 0, 32)) . self::derInteger(substr($raw, 32)));
     }
 
+    /** pack('C') rather than chr(): PHP 8.5 types chr() as int<0, 255>, which cannot be proven here. */
     private static function derLength(int $length): string
     {
         if ($length < 0x80) {
-            return chr($length);
+            return pack('C', $length);
         }
         $bytes = ltrim(pack('N', $length), "\x00");
 
-        return chr(0x80 | strlen($bytes)) . $bytes;
+        return pack('C', 0x80 | strlen($bytes)) . $bytes;
     }
 
     private static function derSequence(string $content): string
