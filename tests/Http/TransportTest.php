@@ -224,3 +224,23 @@ test('body accepts a StreamInterface and uses it directly', function () {
         // a stream body must NOT be forced to application/json
         ->and($request->getHeaderLine('Content-Type'))->toBe('');
 });
+
+test('an associative query array is encoded with http_build_query', function () {
+    $client = new MockClient();
+    $client->queue(new Response(200, [], '{}'));
+
+    makeTransport($client)->request('GET', '/x', ['query' => ['page' => 2, 'q' => 'a b']]);
+
+    \assert($client->lastRequest !== null);
+    expect((string) $client->lastRequest->getUri())->toBe('https://demo.supabase.co/x?page=2&q=a+b');
+});
+
+test('a list of scalars as query is encoded with positional keys', function () {
+    $client = new MockClient();
+    $client->queue(new Response(200, [], '{}'));
+
+    makeTransport($client)->request('GET', '/x', ['query' => ['a', 'b']]);
+
+    \assert($client->lastRequest !== null);
+    expect((string) $client->lastRequest->getUri())->toBe('https://demo.supabase.co/x?0=a&1=b');
+});

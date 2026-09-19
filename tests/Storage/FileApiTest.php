@@ -67,3 +67,9 @@ test('download returns the raw bytes', function () {
         ->and((string) $http->lastRequest->getUri())->toBe('https://demo.supabase.co/storage/v1/object/avatars/a.png')
         ->and($bytes)->toBe('PNGDATA');
 });
+
+test('FileApi __debugInfo shows the bucket and base URL but hides the HTTP layer', function () {
+    $info = fileClient(new MockClient())->storage()->from('photos')->__debugInfo();
+
+    expect($info)->toBe(['baseUrl' => 'https://demo.supabase.co', 'bucketId' => 'photos', 'http' => '[redacted]']);
+});

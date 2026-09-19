@@ -100,3 +100,8 @@ test('storage() is memoized', function () {
     $c = storageClient(new MockClient());
     expect($c->storage())->toBe($c->storage());
 });
+
+test('StorageClient __debugInfo shows the base URL and hides the HTTP layer', function () {
+    expect(storageClient(new MockClient())->storage()->__debugInfo())
+        ->toBe(['baseUrl' => 'https://demo.supabase.co', 'http' => '[redacted]']);
+});

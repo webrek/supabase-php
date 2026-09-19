@@ -87,3 +87,13 @@ test('rpc scalar() rejects a row set and surfaces server errors', function () {
         ->and(fn () => $client->rpc('missing')->scalar())->toThrow(PostgrestException::class, 'function not found')
         ->and(fn () => $client->rpc('broken')->scalar())->toThrow(PostgrestException::class, 'Invalid JSON');
 });
+
+test('count returns 0 when Content-Range carries no total', function () {
+    $http = new MockClient();
+    $http->queue(new Response(206, ['Content-Range' => '0-9'], ''));
+    $http->queue(new Response(200, [], ''));
+    $client = crClient($http);
+
+    expect($client->from('t')->select('id')->count())->toBe(0)
+        ->and($client->from('t')->select('id')->count())->toBe(0);
+});

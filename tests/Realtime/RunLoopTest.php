@@ -235,3 +235,17 @@ test('heartbeats follow the injected clock', function () {
     expect($frame['topic'])->toBe('phoenix')
         ->and($frame['event'])->toBe('heartbeat');
 });
+
+test('a RealtimeException raised by the connection is rethrown as-is, not wrapped twice', function () {
+    ['rt' => $rt, 'conn' => $conn] = runLoop(false);
+    $rt->connect();
+    $original = new RealtimeException('WebSocket connection closed by remote');
+    $conn->queue($original);
+
+    try {
+        $rt->run();
+        expect(false)->toBeTrue('run() should have thrown');
+    } catch (RealtimeException $e) {
+        expect($e)->toBe($original);
+    }
+});

@@ -33,7 +33,7 @@
     "scripts": {
         "test": "pest",
         "test:integration": "pest tests/Integration",
-        "mutate": "pest --mutate --parallel --everything --path=src --min=76",
+        "mutate": "pest --mutate --parallel --everything --path=src --min=78",
         "stan": "php -d memory_limit=512M vendor/bin/phpstan analyse",
         "lint": "pint"
     },

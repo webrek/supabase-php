@@ -52,3 +52,30 @@ test('maybeSingle returns the first row or null', function () {
     $http2->queue(new Response(200, ['Content-Type' => 'application/json'], '[]'));
     expect(modClient($http2)->from('t')->select('*')->maybeSingle()->execute())->toBeNull();
 });
+
+test('limit sets the limit param on its own', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], '[]'));
+    modClient($http)->from('t')->select('id')->limit(5)->execute();
+
+    \assert($http->lastRequest !== null);
+    $uri = (string) $http->lastRequest->getUri();
+    expect(substr($uri, strpos($uri, '?') + 1))->toBe('select=id&limit=5');
+});
+
+test('filter stringifies null and booleans the PostgREST way', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], '[]'));
+    modClient($http)->from('t')->select('id')->filter('deleted_at', 'is', null)->filter('active', 'is', true)->filter('n', 'eq', 3)->execute();
+
+    \assert($http->lastRequest !== null);
+    $uri = (string) $http->lastRequest->getUri();
+    expect(substr($uri, strpos($uri, '?') + 1))->toBe('select=id&deleted_at=is.null&active=is.true&n=eq.3');
+});
+
+test('execute returns null for an empty body, such as a 204 from a minimal update', function () {
+    $http = new MockClient();
+    $http->queue(new Response(204, [], ''));
+
+    expect(modClient($http)->from('t')->update(['a' => 1])->eq('id', 1)->execute())->toBeNull();
+});
