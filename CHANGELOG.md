@@ -50,8 +50,16 @@ backward-compatible features and patch releases contain fixes.
   that yields a single result (`rpc('add', [...])->scalar()`). `execute()` is for row
   sets and returns `null` for a scalar body, which the README example used to rely on.
 
+### Fixed
+- `RealtimeClient::run()` can be called again after a dropped connection when
+  auto-reconnect is on (for example when driving it in `run($seconds)` slices): it
+  resumes the reconnect back-off instead of throwing "not connected". It still
+  refuses to start before `connect()` and after `disconnect()`.
+
 ### Changed
 - New requirements: `psr/simple-cache ^3.0` (interface only) and `ext-openssl`.
+- `RealtimeClient` accepts optional `clock` and `sleeper` closures (trailing
+  constructor arguments) so the reconnect loop can be tested deterministically.
 - `Client::realtime()` no longer throws when no `webSocketFactory` is configured — the
   factory is only required by `connect()`, so `broadcast()` works without one.
   `RealtimeClient`'s first constructor argument is now nullable and it accepts

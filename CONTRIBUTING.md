@@ -127,7 +127,13 @@ sed -i '' 's/^email_sent = 2$/email_sent = 1000/' supabase/config.toml   # macOS
 
 Edge Functions under `supabase/functions/` are served by the stack's
 edge-runtime; a function added while the stack is running is only picked up
-after `supabase stop && supabase start`.
+after `supabase stop && supabase start`. The edge-runtime container has no
+restart policy and has been seen exiting on its own after a while (Kong then
+answers `503 name resolution failed` for `/functions/v1/*`); bring it back with
+`docker start supabase_edge_runtime_<project>`.
+
+The reconnect test restarts the Realtime container with the docker CLI to
+simulate an outage; it skips itself when docker is not available.
 
 The migrations under `supabase/migrations/` are applied automatically by
 `supabase start`: `20260628000001_integration.sql` creates

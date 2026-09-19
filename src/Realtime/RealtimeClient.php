@@ -35,12 +35,19 @@ final class RealtimeClient
 
     private readonly Serializer $serializer;
 
+    /** connect() has succeeded at least once; run() refuses to start before that. */
+    private bool $connectedOnce = false;
+
     /**
      * @param WebSocketConnectionFactory|null $factory required for the WebSocket
      *        API (connect / channels); broadcast() over HTTP works without it.
      * @param Transport|null $transport required for broadcast() over HTTP.
      * @param string|null $accessToken user JWT sent with channel joins so
      *        private channels are authorised as that user.
+     * @param (\Closure(): float)|null $clock current time in seconds; tests
+     *        inject a fake so heartbeats and back-off are deterministic.
+     * @param (\Closure(float): void)|null $sleeper replaces usleep() in the
+     *        reconnect back-off; tests inject a recorder.
      */
     public function __construct(
         private readonly ?WebSocketConnectionFactory $factory,
@@ -52,6 +59,8 @@ final class RealtimeClient
         private readonly float $reconnectMaxDelay = 30.0,
         private readonly ?Transport $transport = null,
         #[\SensitiveParameter] private ?string $accessToken = null,
+        private readonly ?\Closure $clock = null,
+        private readonly ?\Closure $sleeper = null,
     ) {
         $this->serializer = new Serializer();
     }
@@ -157,6 +166,7 @@ final class RealtimeClient
         }
 
         $this->conn = $conn;
+        $this->connectedOnce = true;
         $this->lastHeartbeat = $this->now();
     }
 
@@ -178,7 +188,8 @@ final class RealtimeClient
 
     public function run(?float $maxSeconds = null): void
     {
-        if ($this->conn === null || (! $this->autoReconnect && ! $this->conn->isConnected())) {
+        $connected = $this->conn?->isConnected() ?? false;
+        if (! $this->connectedOnce || (! $this->autoReconnect && ! $connected)) {
             throw new RealtimeException('Realtime is not connected. Call connect() first.');
         }
 
@@ -254,9 +265,15 @@ final class RealtimeClient
 
     private function sleepSeconds(float $seconds): void
     {
-        if ($seconds > 0.0) {
-            usleep((int) ($seconds * 1_000_000));
+        if ($seconds <= 0.0) {
+            return;
         }
+        if ($this->sleeper !== null) {
+            ($this->sleeper)($seconds);
+
+            return;
+        }
+        usleep((int) ($seconds * 1_000_000));
     }
 
     public function stop(): void
@@ -274,6 +291,7 @@ final class RealtimeClient
             }
             $this->conn = null;
         }
+        $this->connectedOnce = false;
         $this->running = false;
     }
 
@@ -364,7 +382,7 @@ final class RealtimeClient
 
     private function now(): float
     {
-        return microtime(true);
+        return $this->clock !== null ? ($this->clock)() : microtime(true);
     }
 
     private function requireFactory(): WebSocketConnectionFactory
