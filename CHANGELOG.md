@@ -46,6 +46,10 @@ backward-compatible features and patch releases contain fixes.
 - `GoTrueClient::signInWithIdToken(string $provider, string $idToken, array $options = []): Session`
   (`grant_type=id_token`) for Google / Apple ID tokens.
 
+- `FilterBuilder::scalar(): int|float|string|bool|null` returns the bare value of an RPC
+  that yields a single result (`rpc('add', [...])->scalar()`). `execute()` is for row
+  sets and returns `null` for a scalar body, which the README example used to rely on.
+
 ### Changed
 - New requirements: `psr/simple-cache ^3.0` (interface only) and `ext-openssl`.
 - `Client::realtime()` no longer throws when no `webSocketFactory` is configured — the

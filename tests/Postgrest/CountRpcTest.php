@@ -59,3 +59,31 @@ test('rpc posts params to the function endpoint and decodes the result', functio
         ->and($http->lastRequest->getHeaderLine('Prefer'))->not->toContain('return=minimal')
         ->and($res)->toBe([['sum' => 3]]);
 });
+
+test('rpc scalar() returns the bare value an RPC produces, which execute() cannot represent', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], '3'));
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], '"ok"'));
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], 'true'));
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], 'null'));
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], '3'));
+    $client = crClient($http);
+
+    expect($client->rpc('add', ['a' => 1, 'b' => 2])->scalar())->toBe(3)
+        ->and($client->rpc('greet')->scalar())->toBe('ok')
+        ->and($client->rpc('flag')->scalar())->toBeTrue()
+        ->and($client->rpc('nothing')->scalar())->toBeNull()
+        ->and($client->rpc('add', ['a' => 1, 'b' => 2])->execute())->toBeNull();
+});
+
+test('rpc scalar() rejects a row set and surfaces server errors', function () {
+    $http = new MockClient();
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], '[{"sum":3}]'));
+    $http->queue(new Response(404, ['Content-Type' => 'application/json'], '{"message":"function not found"}'));
+    $http->queue(new Response(200, ['Content-Type' => 'application/json'], '{not json'));
+    $client = crClient($http);
+
+    expect(fn () => $client->rpc('rows')->scalar())->toThrow(PostgrestException::class, 'row set')
+        ->and(fn () => $client->rpc('missing')->scalar())->toThrow(PostgrestException::class, 'function not found')
+        ->and(fn () => $client->rpc('broken')->scalar())->toThrow(PostgrestException::class, 'Invalid JSON');
+});

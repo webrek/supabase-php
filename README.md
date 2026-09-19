@@ -87,7 +87,8 @@ $supabase->from('users')
 $total = $supabase->from('users')->select('*')->eq('active', true)->count();
 
 // RPC (remote procedure call)
-$result = $supabase->rpc('add', ['a' => 1, 'b' => 2])->execute();
+$sum  = $supabase->rpc('add', ['a' => 1, 'b' => 2])->scalar();           // a function returning one value
+$rows = $supabase->rpc('search_posts', ['q' => 'php'])->select('id')->execute(); // a set-returning function
 
 // Advanced filters: in(), or(), full-text search, ranges
 $posts = $supabase->from('posts')

@@ -327,6 +327,10 @@ class FilterBuilder
     }
 
     /**
+     * Sends the request and returns the rows (or the single row after
+     * single() / maybeSingle()). A scalar body — an RPC returning one value —
+     * is not a row set and yields null here: use scalar() for those.
+     *
      * @return array<mixed>|null
      */
     public function execute(): array|null
@@ -334,6 +338,36 @@ class FilterBuilder
         $response = $this->send($this->method);
 
         return $this->decode($response);
+    }
+
+    /**
+     * Sends the request and returns a scalar result, which is what an RPC
+     * returning a single value (integer, numeric, text, boolean, ...) yields.
+     * Throws PostgrestException when the server answers with a row set instead.
+     */
+    public function scalar(): int|float|string|bool|null
+    {
+        $response = $this->send($this->method);
+        if ($response->getStatusCode() >= 400) {
+            throw PostgrestException::fromResponse($response);
+        }
+
+        $body = ResponseBody::read($response->getBody());
+        if ($body === '') {
+            return null;
+        }
+
+        try {
+            $decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new PostgrestException('Invalid JSON in PostgREST response: ' . $e->getMessage(), previous: $e);
+        }
+
+        if (is_int($decoded) || is_float($decoded) || is_string($decoded) || is_bool($decoded) || $decoded === null) {
+            return $decoded;
+        }
+
+        throw new PostgrestException('Expected a scalar PostgREST result but received a row set; use execute() for rows.');
     }
 
     public function count(string $type = 'exact'): int
